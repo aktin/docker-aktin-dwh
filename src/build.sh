@@ -9,22 +9,16 @@
 
 set -euo pipefail
 
-CLEANUP=false
 USE_MAIN=false
 
 usage() {
-  echo "Usage: $0 [--cleanup] [--use-main-branch]" >&2
-  echo "  --cleanup          Optional: Remove build directory after package creation" >&2
+  echo "Usage: $0 [--use-main-branch]" >&2
   echo "  --use-main-branch  Optional: Download the current version from main branch instead of tagger releases" >&2
   exit 1
 }
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --cleanup)
-      CLEANUP=true
-      shift
-      ;;
     --use-main-branch)
       USE_MAIN=true
       shift
@@ -66,7 +60,6 @@ load_docker_environment_variables() {
 download_artifacts() {
   local -r base_url="https://github.com/aktin"
   local -r api_url="https://api.github.com/repos/aktin"
-  local use_main=${1:-false}
   echo "Downloading required artifacts..."
   mkdir -p "${DIR_DOWNLOADS}"
 
@@ -77,7 +70,7 @@ download_artifacts() {
     # Use cached version if available
     [[ -f "${zip_file}" ]] && { echo "Using cached ${pkg_name}.zip"; return 0; }
     # Download the latest version instead
-    if [ "$use_main" = true ]; then
+    if [ "$USE_MAIN" = true ]; then
       echo "Downloading ${pkg_name} main branch..."
       curl -L -o "${zip_file}" "${base_url}/debian-${pkg_name}-pkg/archive/refs/heads/main.zip"
       return 0
@@ -104,26 +97,41 @@ extract_artifacts() {
      local pkg_name="$1"
      local version="$2"
      local zip_file="${DIR_DOWNLOADS}/${pkg_name}.zip"
-     local src_path="debian-${pkg_name}-pkg-${version}/src"
+     # Determine package directory based on download type (main/version)
+     local pkg_dir
+     pkg_dir=$([ "$USE_MAIN" = true ] && echo "main" || echo "${version}")
+     local src_path="debian-${pkg_name}-pkg-${pkg_dir}/src"
      local target_dir="${DIR_DOWNLOADS}/${pkg_name}"
-
+     # Skip extraction if sources already exist
+     [[ -d "${target_dir}" ]] && { echo "Using cached ${pkg_name} sources"; return 0; }
      echo "Extracting ${pkg_name} source files..."
-     rm -rf "${target_dir}"
      mkdir -p "${target_dir}"
-     unzip -o "${zip_file}" "${src_path}/*" -d "${target_dir}"
+     unzip -qo "${zip_file}" "${src_path}/*" -d "${target_dir}"
+     # Move files to target and cleanup temp dirs
      mv "${target_dir}/${src_path}/"* "${target_dir}"
-     rm -rf "${target_dir:?}/debian-${pkg_name}-pkg-${version}"
+     rm -rf "${target_dir:?}/debian-${pkg_name}-pkg-${pkg_dir}"
    }
    extract_src "i2b2" "${I2B2_DEBIAN_RELEASE}"
    extract_src "dwh" "${DWH_DEBIAN_RELEASE}"
 }
 
-build_debian_pkgs() {
+execute_build_scripts() {
   echo "Building debian packages"
 
-
+  build_package() {
+    local pkg_name="$1"
+    local build_script="${DIR_DOWNLOADS}/${pkg_name}/debian/build.sh"
+    if [[ -x "${build_script}" ]]; then
+      echo "Building ${pkg_name} package..."
+      "${build_script}" --skip-deb-build
+    else
+      echo "Error: Build script not found or not executable for ${pkg_name}" >&2
+      return 1
+    fi
+  }
+  build_package "i2b2"
+  build_package "dwh"
 }
-
 
 prepare_postgresql_docker() {
   echo "Preparing PostgreSQL Docker image..."

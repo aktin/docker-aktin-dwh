@@ -152,20 +152,36 @@ prepare_postgresql_docker(){
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
 }
 
-<<'###BLOCK-COMMENT'
+# TODO: Delete duplicates from proxy.php blacklist/whitelist?
 prepare_apache2_docker() {
-  echo "Preparing Apache2 Docker image..."
-  mkdir -p "${DIR_BUILD}/httpd"
-  sed -e "s/__APACHE_VERSION__/${APACHE_VERSION_PHP_DOCKER}/g" "${DIR_SRC}/httpd/Dockerfile" > "${DIR_BUILD}/httpd/Dockerfile"
-  download_and_extract_i2b2_webclient "/httpd/webclient"
-  configure_i2b2_webclient "/httpd/webclient" "wildfly"
+  local wildfly_host="$1"
+  echo "Preparing Apache container environment..."
+  local build_dir="${DIR_BUILD}/httpd"
+  mkdir -p "${build_dir}"
 
-  echo "Preparing Apache2 Docker image..."
-  mkdir -p "${DIR_BUILD}/httpd"
-  sed -e "s|__BASE_IMAGE__|${BASE_IMAGE_NAMESPACE}-httpd|g" "${DIR_SRC}/httpd/Dockerfile" >"${DIR_BUILD}/httpd/Dockerfile"
-  copy_apache2_proxy_config "/httpd" "wildfly"
+  deploy_i2b2_webclient() {
+    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
+    local source_dir="${DIR_SRC}/downloads/i2b2/build/aktin-notaufnahme-i2b2_${version}/var/www/html/webclient"
+    local target_dir="${build_dir}/webclient"
+    echo "Copying i2b2 webclient..."
+    cp -r "${source_dir}/" "${build_dir}"
+    # Update host configurations
+    sed -i "s|localhost|${wildfly_host}|g" "${target_dir}/i2b2_config_domains.json"
+    sed -i -e "s|localhost|${wildfly_host}|g" -e "s|127\.0\.0\.1|${wildfly_host}|g" "${target_dir}/proxy.php"
+  }
+  deploy_proxy_config() {
+    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
+    local source_file="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}/etc/apache2/conf-available/aktin-j2ee-reverse-proxy.conf"
+    echo "Deploying reverse proxy config..."
+    cp "${source_file}" "${build_dir}/"
+    # Update host configuration
+    sed -i "s|localhost|${wildfly_host}|g" "${build_dir}/aktin-j2ee-reverse-proxy.conf"
+  }
+  deploy_i2b2_webclient
+  deploy_proxy_config
+  sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" "${DIR_SRC}/docker/httpd/Dockerfile" > "${build_dir}/Dockerfile"
 }
-###BLOCK-COMMENT
+
 
 <<'###BLOCK-COMMENT'
 prepare_wildfly_docker() {

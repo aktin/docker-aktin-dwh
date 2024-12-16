@@ -133,12 +133,23 @@ execute_build_scripts() {
   build_package "dwh"
 }
 
-prepare_postgresql_docker() {
-  echo "Preparing PostgreSQL Docker image..."
-  mkdir -p "${DIR_BUILD}/database"
-  sed -e "s/__POSTGRESQL_VERSION__/${POSTGRESQL_VERSION}/g" "${DIR_SRC}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
-  # TODO copy i2b2 und dwh package sql scripts to build/
-  cp "${DIR_SRC}/database/sql/update_wildfly_host.sql" "${DIR_BUILD}/database/sql/update_wildfly_host.sql"
+prepare_postgresql_docker(){
+  echo "Preparing PostgreSQL container environment..."
+  local sql_target_dir="${DIR_BUILD}/database/sql"
+  mkdir -p "${sql_target_dir}"
+
+  copy_package_sql_scripts() {
+    local pkg_name="$1"
+    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
+    local pkg_path="${DIR_SRC}/downloads/${pkg_name}/build/aktin-notaufnahme-${pkg_name}_${version}"
+    local sql_source_dir="${pkg_path}/usr/share/aktin-notaufnahme-${pkg_name}/sql"
+    echo "Copying ${pkg_name} SQL scripts..."
+    cp "${sql_source_dir}/"* "${sql_target_dir}"
+  }
+  copy_package_sql_scripts "i2b2"
+  copy_package_sql_scripts "dwh"
+  sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" "${DIR_SRC}/docker/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
+  cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
 }
 
 <<'###BLOCK-COMMENT'
@@ -214,11 +225,10 @@ build_docker_images() {
 main() {
   set -euo pipefail
   load_docker_environment_variables
-  download_artifacts "true"
+  download_artifacts
   extract_artifacts
+  execute_build_scripts
 
-
-  #prepare_postgresql_docker
   #clean_up_old_docker_images
   #build_docker_images
 }

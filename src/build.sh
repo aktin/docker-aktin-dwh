@@ -182,26 +182,46 @@ prepare_apache2_docker() {
   sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" "${DIR_SRC}/docker/httpd/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
-
-<<'###BLOCK-COMMENT'
 prepare_wildfly_docker() {
-  echo "Preparing WildFly Docker image..."
-  mkdir -p "${DIR_BUILD}/wildfly"
-  sed -e "s/__UBUNTU_VERSION__/${UBUNTU_VERSION_WILDFLY_DOCKER}/g" "${DIR_SRC}/wildfly/Dockerfile" > "${DIR_BUILD}/wildfly/Dockerfile"
-  download_and_extract_wildfly "/wildfly/wildfly"
-  configure_wildfly "/wildfly/wildfly"
-  download_and_copy_jdbc_driver "/wildfly/wildfly/standalone/deployments"
-  download_and_copy_i2b2_war "/wildfly/wildfly/standalone/deployments"
+  echo "Preparing Wildfly container environment..."
+  local build_dir="${DIR_BUILD}/wildfly"
+  mkdir -p "${build_dir}"/{wildfly,import-scripts}
 
-  echo "Preparing WildFly Docker image..."
-  mkdir -p "${DIR_BUILD}/wildfly"
-  sed -e "s|__BASE_IMAGE__|${BASE_IMAGE_NAMESPACE}-wildfly|g" "${DIR_SRC}/wildfly/Dockerfile" >"${DIR_BUILD}/wildfly/Dockerfile"
-  download_and_copy_dwh_j2ee "/wildfly"
-  copy_aktin_properties "/wildfly"
-  download_and_copy_aktin_import_scripts "/wildfly/import-scripts"
-  copy_wildfly_config "/wildfly"
+  deploy_wildfly_base() {
+    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
+    local source_dir="${DIR_SRC}/downloads/i2b2/build/aktin-notaufnahme-i2b2_${version}/opt/wildfly"
+    echo "Copying Wildfly server..."
+    cp -r "${source_dir}/"* "${build_dir}/wildfly"
+  }
+  deploy_aktin_components() {
+    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
+    local base_dir="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}"
+    echo "Copying AKTIN components..."
+    cp -r "${base_dir}/var/lib/aktin/import-scripts/"* "${build_dir}/import-scripts/"
+    cp -r "${base_dir}/etc/aktin/aktin.properties" "${build_dir}/"
+    cp -r "${base_dir}/opt/wildfly/bin/"* "${build_dir}/wildfly/bin/"
+    cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
+  }
+  # get all openjdk, python and R dependencies of debian package
+  get_package_dependencies() {
+   local pkg_name="$1"
+   local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
+   local control_path="${DIR_SRC}/downloads/${pkg_name}/build/aktin-notaufnahme-${pkg_name}_${version}/DEBIAN/control"
+   grep '^Depends:' "${control_path}"
+  }
+  local ubuntu_dependencies=$(
+   { get_package_dependencies "i2b2"; get_package_dependencies "dwh"; } | \
+   tr ',' '\n' | \
+   grep -E 'openjdk|python3|r-' | \
+   sed -e 's/([^)]*)//g' -e 's/^[[:space:]]*//' | \
+   sort -u | \
+   tr '\n' ' '
+  )
+
+  deploy_wildfly_base
+  deploy_aktin_components
+  sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" "${DIR_SRC}/docker/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
-###BLOCK-COMMENT
 
 clean_up_old_docker_images() {
   echo "Cleaning up old Docker images and containers..."

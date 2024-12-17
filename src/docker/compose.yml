@@ -1,6 +1,7 @@
 services:
   database:
     image: ${IMAGE_NAMESPACE}-database
+    hostname: database
     build:
       context: ./database
     volumes:
@@ -14,8 +15,13 @@ services:
       - aktin-network
   wildfly:
     image: ${IMAGE_NAMESPACE}-wildfly
+    hostname: wildfly
     build:
       context: ./wildfly
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      JAVA_OPTS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -Dfile.encoding=UTF-8
     volumes:
       - aktin_config:/etc/aktin
       - aktin_data:/var/lib/aktin
@@ -28,6 +34,7 @@ services:
       - aktin-network
   httpd:
     image: ${IMAGE_NAMESPACE}-httpd
+    hostname: httpd
     build:
       context: ./httpd
     ports:

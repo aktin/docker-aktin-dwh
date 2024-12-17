@@ -206,13 +206,21 @@ prepare_wildfly_docker() {
     echo "Copying Wildfly server..."
     cp -r "${source_dir}/"* "${build_dir}/wildfly"
   }
+  install_aktin_ds() {
+    echo "Configuring Wildfly server..."
+    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
+    local base_dir="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}"
+    local jdbc_version=$(grep "POSTGRES_JDBC_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
+    sed -e "s|__POSTGRES_JDBC_VERSION__|${jdbc_version}|g" "${base_dir}/opt/wildfly/bin/add-aktin-config.cli" > "${build_dir}/wildfly/bin/add-aktin-config.cli"
+    "${build_dir}/wildfly/bin/jboss-cli.sh" --file="${build_dir}/wildfly/bin/add-aktin-config.cli"
+    rm -rf "${build_dir}/standalone/configuration/standalone_xml_history/current/*"
+  }
   deploy_aktin_components() {
     local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
     local base_dir="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}"
     echo "Copying AKTIN components..."
     cp -r "${base_dir}/var/lib/aktin/import-scripts/"* "${build_dir}/import-scripts/"
     cp -r "${base_dir}/etc/aktin/aktin.properties" "${build_dir}/"
-    cp -r "${base_dir}/opt/wildfly/bin/"* "${build_dir}/wildfly/bin/"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
   }
   # get all openjdk, python and R dependencies of debian package
@@ -230,8 +238,8 @@ prepare_wildfly_docker() {
    sort -u | \
    tr '\n' ' '
   )
-
   deploy_wildfly_base
+  install_aktin_ds
   deploy_aktin_components
   sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" "${DIR_SRC}/docker/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }

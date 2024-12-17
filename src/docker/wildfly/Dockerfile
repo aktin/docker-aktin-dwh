@@ -18,33 +18,23 @@ LABEL org.opencontainers.image.version="__DWH_DEBIAN_RELEASE__"
 LABEL org.opencontainers.image.vendor="AKTIN"
 
 # Prevent interactive prompts during installation
-# Set the German locale for the system
-ENV DEBIAN_FRONTEND=noninteractive \
-   LANG=de_DE.UTF-8 \
-   LANGUAGE=de_DE:de \
-   LC_ALL=de_DE.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install essential packages and clean up APT cache
-RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ \
-   && rm -rf /var/lib/apt/lists/* \
-   && locale-gen de_DE.UTF-8
+RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ && rm -rf /var/lib/apt/lists/*
 
 # Setup WildFly user and environment
 RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly
 
 # Copy WildFly distribution
 WORKDIR /opt/wildfly
-COPY ./wildfly/* ./
+COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
 
-# Install AKTIN datasource
-# Remove WildFly configuration history to reduce image size
 # Enable Wildfly to read aktin.properties
 # Change ownership of WildFly directories to 'wildfly' user
-RUN /opt/wildfly/bin/jboss-cli.sh --file=/opt/wildfly/bin/add-aktin-config.cli \
-   && rm -rf ./standalone/configuration/standalone_xml_history/current/* \
-   && ln -sf /etc/aktin/aktin.properties ./standalone/configuration/ \
+RUN ln -sf /etc/aktin/aktin.properties ./standalone/configuration/ \
    && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin
 
 EXPOSE 8080 9990

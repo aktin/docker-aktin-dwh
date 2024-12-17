@@ -10,7 +10,7 @@
 FROM php:__APACHE_VERSION__
 
 # Build-time metadata
-LABEL org.opencontainers.image.title="AKTIN Web Interface"
+LABEL org.opencontainers.image.title="AKTIN Apache2"
 LABEL org.opencontainers.image.description="Apache/PHP web server with i2b2 interface and AKTIN integration"
 LABEL org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de"
 LABEL org.opencontainers.image.version="__DWH_DEBIAN_RELEASE__"

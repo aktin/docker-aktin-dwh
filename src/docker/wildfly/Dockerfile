@@ -11,8 +11,8 @@
 FROM ubuntu:__UBUNTU_VERSION__
 
 # Build-time metadata
-LABEL org.opencontainers.image.title="AKTIN Web Interface"
-LABEL org.opencontainers.image.description="Apache/PHP web server with i2b2 interface and AKTIN integration"
+LABEL org.opencontainers.image.title="AKTIN Wildfly"
+LABEL org.opencontainers.image.description="Java application server with AKTIN Data Warehouse"
 LABEL org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de"
 LABEL org.opencontainers.image.version="__DWH_DEBIAN_RELEASE__"
 LABEL org.opencontainers.image.vendor="AKTIN"

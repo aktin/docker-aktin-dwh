@@ -1,0 +1,20 @@
+name: CI/CD Docker
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - v[0-9]+.[0-9]+**
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    uses: aktin/aktin-github-scripts/.github/workflows/docker-build.yml@main
+
+  deploy:
+    needs: build
+    uses: aktin/aktin-github-scripts/.github/workflows/docker-deploy.yml@main
+    with:
+      tag-base: 'ghcr.io/aktin/notaufnahme-dwh'

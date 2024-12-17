@@ -9,16 +9,22 @@
 
 set -euo pipefail
 
+CLEANUP=false
 USE_MAIN=false
 
 usage() {
-  echo "Usage: $0 [--use-main-branch]" >&2
-  echo "  --use-main-branch  Optional: Download the current version from main branch instead of tagger releases" >&2
+  echo "Usage: $0 [--cleanup] [--use-main-branch]" >&2
+  echo "  --cleanup          Optional: Remove build directory after image creation" >&2
+  echo "  --use-main-branch  Optional: Download the current version from main branch instead of the specific release versions set in .env" >&2
   exit 1
 }
 
 while [[ $# -gt 0 ]]; do
   case $1 in
+    --cleanup)
+      CLEANUP=true
+      shift
+      ;;
     --use-main-branch)
       USE_MAIN=true
       shift
@@ -97,13 +103,15 @@ extract_artifacts() {
      local pkg_name="$1"
      local version="$2"
      local zip_file="${DIR_DOWNLOADS}/${pkg_name}.zip"
-     # Determine package directory based on download type (main/version)
-     local pkg_dir
-     pkg_dir=$([ "$USE_MAIN" = true ] && echo "main" || echo "${version}")
-     local src_path="debian-${pkg_name}-pkg-${pkg_dir}/src"
      local target_dir="${DIR_DOWNLOADS}/${pkg_name}"
-     # Skip extraction if sources already exist
-     [[ -d "${target_dir}" ]] && { echo "Using cached ${pkg_name} sources"; return 0; }
+     # Skip if package directory already exists
+     if [[ -d "${target_dir}" ]] && [[ -d "${target_dir}/debian" ]]; then
+       echo "Using cached ${pkg_name} sources"
+       return 0
+     fi
+     # Determine package directory based on download type (main/version)
+     local pkg_dir=$([ "$USE_MAIN" = true ] && echo "main" || echo "${version}")
+     local src_path="debian-${pkg_name}-pkg-${pkg_dir}/src"
      echo "Extracting ${pkg_name} source files..."
      mkdir -p "${target_dir}"
      unzip -qo "${zip_file}" "${src_path}/*" -d "${target_dir}"
@@ -120,14 +128,19 @@ execute_build_scripts() {
 
   build_package() {
     local pkg_name="$1"
+    local build_dir="${DIR_DOWNLOADS}/${pkg_name}/build"
     local build_script="${DIR_DOWNLOADS}/${pkg_name}/debian/build.sh"
-    if [[ -x "${build_script}" ]]; then
-      echo "Building ${pkg_name} package..."
-      "${build_script}" --skip-deb-build
-    else
+    # Skip if build directory exists
+    if [[ -d "${build_dir}" ]]; then
+      echo "Using cached ${pkg_name} build"
+      return 0
+    fi
+    if [[ ! -x "${build_script}" ]]; then
       echo "Error: Build script not found or not executable for ${pkg_name}" >&2
       return 1
     fi
+    echo "Building ${pkg_name} package..."
+    "${build_script}" --skip-deb-build
   }
   build_package "i2b2"
   build_package "dwh"
@@ -252,10 +265,15 @@ clean_up_old_docker_images() {
 
 build_docker_images() {
   echo "Building Docker images..."
-  cwd="$(pwd)"
-  cd "${DIR_SRC}"
+  cp "${DIR_SRC}/docker/compose.yml" "${DIR_BUILD}"
+  local cwd="$(pwd)"
+  cd "${DIR_BUILD}"
   docker compose build
   cd "${cwd}"
+  if [[ "${CLEANUP}" == true ]]; then
+    echo "Cleaning up build directory..."
+    rm -rf "${DIR_BUILD}"
+  fi
 }
 
 main() {
@@ -264,9 +282,10 @@ main() {
   download_artifacts
   extract_artifacts
   execute_build_scripts
-
-  #clean_up_old_docker_images
-  #build_docker_images
+  prepare_postgresql_docker
+  prepare_apache2_docker "wildfly"
+  prepare_wildfly_docker
+  build_docker_images
 }
 
 main

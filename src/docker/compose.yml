@@ -1,0 +1,50 @@
+services:
+  database:
+    image: ${IMAGE_NAMESPACE}-database
+    build:
+      context: ./database
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aktin-network
+  wildfly:
+    image: ${IMAGE_NAMESPACE}-wildfly
+    build:
+      context: ./wildfly
+    volumes:
+      - aktin_config:/etc/aktin
+      - aktin_data:/var/lib/aktin
+    expose:
+      - "8080"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - aktin-network
+  httpd:
+    image: ${IMAGE_NAMESPACE}-httpd
+    build:
+      context: ./httpd
+    ports:
+      - "80:80"
+    depends_on:
+      - wildfly
+    networks:
+      - aktin-network
+
+volumes:
+  pg_data:
+    driver: local
+  aktin_config:
+    driver: local
+  aktin_data:
+    driver: local
+
+networks:
+  aktin-network:
+    driver: bridge

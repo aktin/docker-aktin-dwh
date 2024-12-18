@@ -215,7 +215,7 @@ prepare_wildfly_docker() {
     local jdbc_version=$(grep "POSTGRES_JDBC_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
     sed -e "s|__POSTGRES_JDBC_VERSION__|${jdbc_version}|g" "${base_dir}/opt/wildfly/bin/add-aktin-config.cli" > "${build_dir}/wildfly/bin/add-aktin-config.cli"
     "${build_dir}/wildfly/bin/jboss-cli.sh" --file="${build_dir}/wildfly/bin/add-aktin-config.cli"
-    rm -rf "${build_dir}/standalone/configuration/standalone_xml_history/current/*"
+    rm "${build_dir}"/wildfly/standalone/configuration/standalone_xml_history/current/*
   }
   deploy_aktin_components() {
     local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)

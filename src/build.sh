@@ -1,10 +1,11 @@
 #!/bin/bash
 #--------------------------------------
 # Script Name:  build.sh
-# Version:      1.1
+# Version:      1.2
 # Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
-# Date:         05 Dec 24
-# Purpose:      ToDo
+# Date:         18 Dec 24
+# Purpose:      Automates the build process for AKTIN emergency department system containers. Downloads required artifacts, prepares container
+#               environments for PostgreSQL, WildFly and Apache2, and builds Docker images for deployment.
 #--------------------------------------
 
 set -euo pipefail
@@ -16,8 +17,8 @@ FORCE_REBUILD=false
 USE_MAIN=false
 
 usage() {
-  echo "Usage: $0 [--cleanup] [--use-main-branch]" >&2
-  echo "  --cleanup          Optional: Remove build directory after image creation" >&2
+  echo "Usage: $0 [--cleanup] [--force-rebuild] [--use-main-branch]" >&2
+  echo "  --cleanup          Optional: Remove build files and downloads after image creation" >&2
   echo "  --force-rebuild    Optional: Force a complete image recreation" >&2
   echo "  --use-main-branch  Optional: Download the current version from main branch instead of the specific release versions set in .env" >&2
   exit 1
@@ -254,10 +255,11 @@ prepare_wildfly_docker() {
 
 prepare_docker_compose() {
   sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" \
-  -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" \
-  -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
-  -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
-  -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" "${DIR_SRC}/docker/compose.yml" > "${DIR_BUILD}/compose.yml"
+      -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" \
+      -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
+      -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
+      -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
+      "${DIR_SRC}/docker/compose.yml" > "${DIR_BUILD}/compose.yml"
 }
 
 cleanup_old_docker_images() {
@@ -295,6 +297,7 @@ build_docker_images() {
   if [[ "${CLEANUP}" == true ]]; then
     echo "Cleaning up build artifacts..."
     rm -r "${DIR_BUILD}"/{database,wildfly,httpd}
+    rm -r "${DIR_DOWNLOADS}"
   fi
 }
 

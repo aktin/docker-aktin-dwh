@@ -281,6 +281,8 @@ cleanup_old_docker_images() {
       docker rmi "${full_image_name}:latest"
     fi
   done
+  # Remove dangling images
+  docker image prune -f
 }
 
 build_docker_images() {

@@ -50,8 +50,8 @@ done
 
 # Define relevant directories as absolute paths
 readonly DIR_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly DIR_DOCKER="${DIR_SRC}/docker/"
-readonly DIR_BUILD="${DIR_SRC}/build/"
+readonly DIR_DOCKER="${DIR_SRC}/docker"
+readonly DIR_BUILD="${DIR_SRC}/build"
 readonly DIR_RESOURCES="${DIR_SRC}/resources"
 readonly DIR_DOWNLOADS="${DIR_SRC}/downloads"
 
@@ -170,7 +170,7 @@ prepare_postgresql_docker(){
   }
   copy_package_sql_scripts "i2b2"
   copy_package_sql_scripts "dwh"
-  sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" "${DIR_SRC}/docker/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
+  sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" "${DIR_DOCKER}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
 }
 
@@ -201,7 +201,7 @@ prepare_apache2_docker() {
   }
   deploy_i2b2_webclient
   deploy_proxy_config
-  sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" "${DIR_SRC}/docker/httpd/Dockerfile" > "${build_dir}/Dockerfile"
+  sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
 prepare_wildfly_docker() {
@@ -250,7 +250,7 @@ prepare_wildfly_docker() {
   deploy_wildfly_base
   install_aktin_ds
   deploy_aktin_components
-  sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" "${DIR_SRC}/docker/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
+  sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
 prepare_docker_compose() {
@@ -259,7 +259,7 @@ prepare_docker_compose() {
       -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
       -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
       -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
-      "${DIR_SRC}/docker/compose.yml" > "${DIR_BUILD}/compose.yml"
+      "${DIR_DOCKER}/compose.yml" > "${DIR_BUILD}/compose.yml"
 }
 
 cleanup_old_docker_images() {
@@ -296,7 +296,7 @@ build_docker_images() {
   cd "${cwd}"
   if [[ "${CLEANUP}" == true ]]; then
     echo "Cleaning up build artifacts..."
-    rm -r "${DIR_BUILD}"/{database,wildfly,httpd}
+    rm -r "${DIR_BUILD}/"{database,wildfly,httpd}
     rm -r "${DIR_DOWNLOADS}"
   fi
 }

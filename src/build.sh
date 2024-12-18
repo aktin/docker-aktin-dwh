@@ -12,11 +12,13 @@ set -euo pipefail
 readonly IMAGE_NAMESPACE="notaufnahme-dwh"
 
 CLEANUP=false
+FORCE_REBUILD=false
 USE_MAIN=false
 
 usage() {
   echo "Usage: $0 [--cleanup] [--use-main-branch]" >&2
   echo "  --cleanup          Optional: Remove build directory after image creation" >&2
+  echo "  --force-rebuild    Optional: Force a complete image recreation" >&2
   echo "  --use-main-branch  Optional: Download the current version from main branch instead of the specific release versions set in .env" >&2
   exit 1
 }
@@ -25,6 +27,10 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     --cleanup)
       CLEANUP=true
+      shift
+      ;;
+    --force-rebuild)
+      FORCE_REBUILD=true
       shift
       ;;
     --use-main-branch)
@@ -250,29 +256,23 @@ prepare_docker_compose() {
   sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" "${DIR_SRC}/docker/compose.yml" > "${DIR_BUILD}/compose.yml"
 }
 
-clean_up_old_docker_images() {
-  echo "Cleaning up old Docker images and containers..."
-  local images=("database" "wildfly" "httpd")
+cleanup_old_docker_images() {
+  echo "Cleaning up Docker resources..."
+  local -r images=("database" "wildfly" "httpd")
+
   for image in "${images[@]}"; do
     local full_image_name="${IMAGE_NAMESPACE}-${image}"
-
-    # Stop and remove running containers based on the image
-    local container_ids
-    container_ids=$(docker ps -a -q --filter "ancestor=${full_image_name}:latest")
-    if [ -n "${container_ids}" ]; then
-      echo "Stopping and removing containers for image ${full_image_name}:latest"
-      docker stop ${container_ids} || true
-      docker rm ${container_ids} || true
-    else
-      echo "No containers found for image ${full_image_name}:latest"
+    # Find and remove containers using image
+    if containers=$(docker ps -a -q --filter "ancestor=${full_image_name}:latest"); then
+      if [ -n "$containers" ]; then
+        echo "Removing containers for ${full_image_name}"
+        docker rm -f $containers
+      fi
     fi
-
-    # Remove the Docker image
-    if docker images "${full_image_name}:latest" -q >/dev/null; then
-      echo "Removing image ${full_image_name}:latest"
-      docker image rm "${full_image_name}:latest" || true
-    else
-      echo "Image ${full_image_name}:latest does not exist"
+    # Remove image if exists
+    if docker image inspect "${full_image_name}:latest" >/dev/null 2>&1; then
+      echo "Removing image ${full_image_name}"
+      docker rmi "${full_image_name}:latest"
     fi
   done
 }
@@ -281,11 +281,16 @@ build_docker_images() {
   echo "Building Docker images..."
   local cwd="$(pwd)"
   cd "${DIR_BUILD}"
-  docker compose build
+  if [ "${FORCE_REBUILD}" = true ]; then
+    echo "Forcing image rebuild..."
+    docker compose build --no-cache
+  else
+    docker compose build
+  fi
   cd "${cwd}"
   if [[ "${CLEANUP}" == true ]]; then
-    echo "Cleaning up build directory..."
-    rm -rf "${DIR_BUILD}"
+    echo "Cleaning up build artifacts..."
+    rm -r "${DIR_BUILD}"/{database,wildfly,httpd}
   fi
 }
 
@@ -299,7 +304,7 @@ main() {
   prepare_apache2_docker "wildfly"
   prepare_wildfly_docker
   prepare_docker_compose
-  clean_up_old_docker_images
+  cleanup_old_docker_images
   build_docker_images
 }
 

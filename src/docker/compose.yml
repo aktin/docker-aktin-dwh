@@ -1,6 +1,6 @@
 services:
   database:
-    image: ${IMAGE_NAMESPACE}-database
+    image: __IMAGE_NAMESPACE__-database
     hostname: database
     build:
       context: ./database
@@ -14,7 +14,7 @@ services:
     networks:
       - aktin-network
   wildfly:
-    image: ${IMAGE_NAMESPACE}-wildfly
+    image: __IMAGE_NAMESPACE__-wildfly
     hostname: wildfly
     build:
       context: ./wildfly
@@ -33,7 +33,7 @@ services:
     networks:
       - aktin-network
   httpd:
-    image: ${IMAGE_NAMESPACE}-httpd
+    image: __IMAGE_NAMESPACE__-httpd
     hostname: httpd
     build:
       context: ./httpd
@@ -49,8 +49,12 @@ volumes:
     driver: local
   aktin_config:
     driver: local
+    driver_opts:
+      o: uid=wildfly,gid=wildfly
   aktin_data:
     driver: local
+    driver_opts:
+      o: uid=wildfly,gid=wildfly
 
 networks:
   aktin-network:

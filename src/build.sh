@@ -9,6 +9,8 @@
 
 set -euo pipefail
 
+readonly IMAGE_NAMESPACE="notaufnahme-dwh"
+
 CLEANUP=false
 USE_MAIN=false
 
@@ -244,6 +246,10 @@ prepare_wildfly_docker() {
   sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" "${DIR_SRC}/docker/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
+prepare_docker_compose() {
+  sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" "${DIR_SRC}/docker/compose.yml" > "${DIR_BUILD}/compose.yml"
+}
+
 clean_up_old_docker_images() {
   echo "Cleaning up old Docker images and containers..."
   local images=("database" "wildfly" "httpd")
@@ -273,7 +279,6 @@ clean_up_old_docker_images() {
 
 build_docker_images() {
   echo "Building Docker images..."
-  cp "${DIR_SRC}/docker/compose.yml" "${DIR_BUILD}"
   local cwd="$(pwd)"
   cd "${DIR_BUILD}"
   docker compose build
@@ -293,6 +298,8 @@ main() {
   prepare_postgresql_docker
   prepare_apache2_docker "wildfly"
   prepare_wildfly_docker
+  prepare_docker_compose
+  clean_up_old_docker_images
   build_docker_images
 }
 

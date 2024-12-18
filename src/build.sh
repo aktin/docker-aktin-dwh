@@ -253,7 +253,11 @@ prepare_wildfly_docker() {
 }
 
 prepare_docker_compose() {
-  sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" "${DIR_SRC}/docker/compose.yml" > "${DIR_BUILD}/compose.yml"
+  sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" \
+  -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" \
+  -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
+  -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
+  -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" "${DIR_SRC}/docker/compose.yml" > "${DIR_BUILD}/compose.yml"
 }
 
 cleanup_old_docker_images() {

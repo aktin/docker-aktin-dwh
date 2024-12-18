@@ -1,6 +1,6 @@
 services:
   database:
-    image: __IMAGE_NAMESPACE__-database
+    image: __IMAGE_NAMESPACE__-database:__DWH_DEBIAN_RELEASE__-__DATABASE_CONTAINER_VERSION__
     hostname: database
     build:
       context: ./database
@@ -14,7 +14,7 @@ services:
     networks:
       - aktin-network
   wildfly:
-    image: __IMAGE_NAMESPACE__-wildfly
+    image: __IMAGE_NAMESPACE__-wildfly:__DWH_DEBIAN_RELEASE__-__WILDFLY_CONTAINER_VERSION__
     hostname: wildfly
     build:
       context: ./wildfly
@@ -30,10 +30,15 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/broker/status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - aktin-network
   httpd:
-    image: __IMAGE_NAMESPACE__-httpd
+    image: __IMAGE_NAMESPACE__-httpd:__DWH_DEBIAN_RELEASE__-__HTTPD_CONTAINER_VERSION__
     hostname: httpd
     build:
       context: ./httpd
@@ -41,6 +46,11 @@ services:
       - "80:80"
     depends_on:
       - wildfly
+    healthcheck:
+      test: [ "CMD", "apache2ctl", "configtest" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - aktin-network
 
@@ -49,12 +59,8 @@ volumes:
     driver: local
   aktin_config:
     driver: local
-    driver_opts:
-      o: uid=wildfly,gid=wildfly
   aktin_data:
     driver: local
-    driver_opts:
-      o: uid=wildfly,gid=wildfly
 
 networks:
   aktin-network:

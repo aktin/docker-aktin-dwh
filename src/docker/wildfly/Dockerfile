@@ -20,6 +20,14 @@ LABEL org.opencontainers.image.vendor="AKTIN"
 # Prevent interactive prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Set German Locale (required for running the AKTIN DWH)
+ENV LANG=de_DE.UTF-8
+ENV LANGUAGE=de_DE:en
+ENV LC_ALL=de_DE.UTF-8
+RUN apt-get update && apt-get install -y locales && \
+    locale-gen de_DE.UTF-8 && \
+    update-locale LANG=de_DE.UTF-8
+
 # Install essential packages and clean up APT cache
 RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ && rm -rf /var/lib/apt/lists/*
 

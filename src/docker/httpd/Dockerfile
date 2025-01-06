@@ -13,7 +13,7 @@ FROM php:__APACHE_VERSION__
 LABEL org.opencontainers.image.title="AKTIN Apache2"
 LABEL org.opencontainers.image.description="Apache/PHP web server with i2b2 interface and AKTIN integration"
 LABEL org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de"
-LABEL org.opencontainers.image.version="__DWH_DEBIAN_RELEASE__-docker__HTTPD_CONTAINER_VERSION__"
+LABEL org.opencontainers.image.version="__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_VERSION__"
 LABEL org.opencontainers.image.vendor="AKTIN"
 
 # PHP and Apache configuration

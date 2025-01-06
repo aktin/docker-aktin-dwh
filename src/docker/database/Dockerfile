@@ -15,7 +15,7 @@ LABEL org.opencontainers.image.title="AKTIN PostgreSQL"
 LABEL org.opencontainers.image.description="PostgreSQL database with i2b2/AKTIN schema"
 LABEL org.opencontainers.image.vendor="AKTIN"
 LABEL org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de"
-LABEL org.opencontainers.image.version="__DWH_DEBIAN_RELEASE__-docker__DATABASE_CONTAINER_VERSION__"
+LABEL org.opencontainers.image.version="__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_VERSION__"
 
 # Runtime configuration
 ENV POSTGRES_PASSWORD=postgres

@@ -11,7 +11,7 @@
 
 services:
   database:
-    image: __IMAGE_NAMESPACE__-database:__DWH_DEBIAN_RELEASE__-docker__DATABASE_CONTAINER_VERSION__
+    image: __IMAGE_NAMESPACE__-database:__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_VERSION__
     hostname: database
     build:
       context: ./database
@@ -25,7 +25,7 @@ services:
     networks:
       - aktin-network
   wildfly:
-    image: __IMAGE_NAMESPACE__-wildfly:__DWH_DEBIAN_RELEASE__-docker__WILDFLY_CONTAINER_VERSION__
+    image: __IMAGE_NAMESPACE__-wildfly:__DWH_GITHUB_TAG__-docker__WILDFLY_CONTAINER_VERSION__
     hostname: wildfly
     build:
       context: ./wildfly
@@ -48,7 +48,7 @@ services:
     networks:
       - aktin-network
   httpd:
-    image: __IMAGE_NAMESPACE__-httpd:__DWH_DEBIAN_RELEASE__-docker__HTTPD_CONTAINER_VERSION__
+    image: __IMAGE_NAMESPACE__-httpd:__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_VERSION__
     hostname: httpd
     build:
       context: ./httpd

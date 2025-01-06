@@ -64,6 +64,7 @@ load_docker_environment_variables() {
     echo "Error: .env file not found in ${DIR_SRC}" >&2
     exit 1
   fi
+  export DWH_DEBIAN_RELEASE="${DWH_GITHUB_TAG//_/\~}"
   if [[ ! -d "${DIR_BUILD}" ]]; then
     mkdir -p "${DIR_BUILD}"
   fi
@@ -101,8 +102,8 @@ download_artifacts() {
     echo "Downloading ${pkg_name} package version ${version}..."
     curl -L -o "${zip_file}" "${base_url}/debian-${pkg_name}-pkg/archive/refs/tags/v${version}.zip"
   }
-  download_package "i2b2" "${I2B2_DEBIAN_RELEASE}"
-  download_package "dwh" "${DWH_DEBIAN_RELEASE}"
+  download_package "i2b2" "${I2B2_GITHUB_TAG}"
+  download_package "dwh" "${DWH_GITHUB_TAG}"
 }
 
 extract_artifacts() {
@@ -128,8 +129,8 @@ extract_artifacts() {
      mv "${target_dir}/${src_path}/"* "${target_dir}"
      rm -rf "${target_dir:?}/debian-${pkg_name}-pkg-${pkg_dir}"
    }
-   extract_src "i2b2" "${I2B2_DEBIAN_RELEASE}"
-   extract_src "dwh" "${DWH_DEBIAN_RELEASE}"
+   extract_src "i2b2" "${I2B2_GITHUB_TAG}"
+   extract_src "dwh" "${DWH_GITHUB_TAG}"
 }
 
 execute_build_scripts() {
@@ -170,7 +171,7 @@ prepare_postgresql_docker(){
   }
   copy_package_sql_scripts "i2b2"
   copy_package_sql_scripts "dwh"
-  sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" "${DIR_DOCKER}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
+  sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" "${DIR_DOCKER}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
 }
 
@@ -201,7 +202,7 @@ prepare_apache2_docker() {
   }
   deploy_i2b2_webclient
   deploy_proxy_config
-  sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
+  sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
 prepare_wildfly_docker() {
@@ -250,7 +251,7 @@ prepare_wildfly_docker() {
   deploy_wildfly_base
   install_aktin_ds
   deploy_aktin_components
-  sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
+  sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" -e "s|__DWH_DEBIAN_RELEASE__|${DWH_DEBIAN_RELEASE}|g" -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
 prepare_docker_compose() {

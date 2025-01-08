@@ -11,10 +11,10 @@ on:
 
 jobs:
   build:
-    uses: aktin/aktin-github-scripts/.github/workflows/docker-build.yml@main
+    uses: ./.github/workflows/build.yml@main
 
   deploy:
     needs: build
-    uses: aktin/aktin-github-scripts/.github/workflows/docker-deploy.yml@main
+    uses: ./.github/workflows/deploy.yml@main
     with:
       tag-base: 'ghcr.io/aktin/notaufnahme-dwh'

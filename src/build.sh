@@ -254,12 +254,22 @@ prepare_wildfly_docker() {
 }
 
 prepare_docker_compose() {
+  local ghcr_namespace="ghcr.io/aktin/"
+  # prepare development compose file
   sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
       -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
       -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
-      "${DIR_DOCKER}/compose.yml" > "${DIR_BUILD}/compose.yml"
+      "${DIR_DOCKER}/compose.yml" > "${DIR_BUILD}/compose.dev.yml"
+  # prepare production compose file
+  sed -e "s|__IMAGE_NAMESPACE__|${ghcr_namespace}${IMAGE_NAMESPACE}|g" \
+      -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
+      -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
+      -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
+      -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
+      "${DIR_DOCKER}/compose.yml" > "${DIR_BUILD}/compose.prod.yml"
+  sed -i '/build:/d; /context:/d' "${DIR_BUILD}/compose.prod.yml"
 }
 
 cleanup_old_docker_images() {
@@ -291,9 +301,9 @@ build_docker_images() {
   cd "${DIR_BUILD}"
   if [ "${FORCE_REBUILD}" = true ]; then
     echo "Forcing image rebuild..."
-    docker compose build --no-cache
+    docker compose  -f compose.dev.yml build --no-cache
   else
-    docker compose build
+    docker compose  -f compose.dev.yml build
   fi
   cd "${cwd}"
   if [[ "${CLEANUP}" == true ]]; then

@@ -15,12 +15,14 @@ readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
 CLEANUP=false
 FORCE_REBUILD=false
 USE_MAIN=false
+CREATE_LATEST=false
 
 usage() {
-  echo "Usage: $0 [--cleanup] [--force-rebuild] [--use-main-branch]" >&2
+  echo "Usage: $0 [--cleanup] [--force-rebuild] [--use-main-branch] [--create-latest]" >&2
   echo "  --cleanup          Optional: Remove build files and downloads after image creation" >&2
   echo "  --force-rebuild    Optional: Force a complete image recreation" >&2
-  echo "  --use-main-branch  Optional: Download the current version from main branch instead of the specific release versions set in .env" >&2
+  echo "  --use-main-branch  Optional: Download the current version from main branch instead of the specific release versions" >&2
+  echo "  --create-latest    Optional: Create additional containers tagged as 'latest'" >&2
   exit 1
 }
 
@@ -36,6 +38,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --use-main-branch)
       USE_MAIN=true
+      shift
+      ;;
+    --create-latest)
+      CREATE_LATEST=true
       shift
       ;;
     -h|--help)
@@ -281,23 +287,24 @@ prepare_docker_compose() {
 
 cleanup_old_docker_images() {
   echo "Cleaning up Docker resources..."
-  local -r images=("database" "wildfly" "httpd")
-
-  for image in "${images[@]}"; do
-    local full_image_name="${IMAGE_NAMESPACE}-${image}"
-    # Find and remove containers using image
-    if containers=$(docker ps -a -q --filter "ancestor=${full_image_name}:latest"); then
-      if [ -n "$containers" ]; then
-        echo "Removing containers for ${full_image_name}"
-        docker rm -f $containers
+  # Get all images that match namespace
+  local images=$(docker images "${IMAGE_NAMESPACE}-*" --format "{{.Repository}}:{{.Tag}}")
+  if [ -n "$images" ]; then
+    # Remove any containers using these images
+    for image in $images; do
+      if containers=$(docker ps -a -q --filter "ancestor=${image}"); then
+        if [ -n "$containers" ]; then
+          echo "Removing containers for ${image}"
+          docker rm -f $containers
+        fi
       fi
-    fi
-    # Remove image if exists
-    if docker image inspect "${full_image_name}:latest" >/dev/null 2>&1; then
-      echo "Removing image ${full_image_name}"
-      docker rmi "${full_image_name}:latest"
-    fi
-  done
+    done
+    # Remove all matching images
+    echo "Removing all matching images..."
+    docker rmi $images
+  else
+    echo "No images found to cleanup"
+  fi
   # Remove dangling images
   docker image prune -f
 }
@@ -306,12 +313,29 @@ build_docker_images() {
   echo "Building Docker images..."
   local cwd="$(pwd)"
   cd "${DIR_BUILD}"
+
+  # Build versioned images
   if [ "${FORCE_REBUILD}" = true ]; then
     echo "Forcing image rebuild..."
     docker compose -f compose.dev.yml build --no-cache
   else
     docker compose -f compose.dev.yml build
   fi
+
+  # Create latest tagged images if requested
+  if [ "${CREATE_LATEST}" = true ]; then
+    echo "Creating latest tagged images..."
+    local services=("database" "wildfly" "httpd")
+    local versions=("${DATABASE_CONTAINER_VERSION}" "${WILDFLY_CONTAINER_VERSION}" "${HTTPD_CONTAINER_VERSION}")
+    for i in "${!services[@]}"; do
+      local service="${services[$i]}"
+      local version="${versions[$i]}"
+      local versioned_tag="${IMAGE_NAMESPACE}-${service}:${DWH_GITHUB_TAG}-docker${version}"
+      local latest_tag="${IMAGE_NAMESPACE}-${service}:latest"
+      docker tag "${versioned_tag}" "${latest_tag}"
+    done
+  fi
+
   cd "${cwd}"
   if [[ "${CLEANUP}" == true ]]; then
     echo "Cleaning up build artifacts..."
@@ -330,11 +354,8 @@ main() {
   prepare_apache2_docker "wildfly"
   prepare_wildfly_docker
   prepare_docker_compose
-  #cleanup_old_docker_images
-  #build_docker_images
+  cleanup_old_docker_images
+  build_docker_images
 }
 
 main
-
-# TODO prod need latest version
-# TODO create latest too

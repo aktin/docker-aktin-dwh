@@ -261,7 +261,7 @@ prepare_wildfly_docker() {
 
 prepare_docker_compose() {
   local dev_compose="${DIR_BUILD}/compose.dev.yml"
-  local prod_compose="${DIR_BUILD}/compose.prod.yml"
+  local prod_compose="${DIR_BUILD}/compose.yml"
   local template="${DIR_DOCKER}/compose.yml"
 
   create_dev_compose() {
@@ -275,9 +275,6 @@ prepare_docker_compose() {
 
   create_prod_compose() {
     cp "${dev_compose}" "${prod_compose}"
-    # Replace specific versions with latest
-    sed -i 's/\(ghcr\.io\/aktin\/notaufnahme-dwh-[^:]*\):.*/\1:latest/g' "${prod_compose}"
-    # Remove build contexts
     sed -i '/build:/d; /context:/d' "${prod_compose}"
   }
 

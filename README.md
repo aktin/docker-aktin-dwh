@@ -5,25 +5,47 @@ A containerized deployment of the AKTIN emergency department system using Docker
 * WildFly application server
 * Apache2 reverse proxy with i2b2 webclient
 
-## Quick Start
 
-1. Clone this repository 
-2. Run the build script:
+## Installation for Users
+
+1. Download the compose file:
+```bash
+curl -LO https://github.com/aktin/docker-aktin-dwh/releases/latest/download/compose.yml
 ```
-./src/build.sh
+
+2. Start the containers:
 ```
-3. Start the containers:
-```
-cd build/
 docker compose up -d
 ```
+The system will be available at `http://localhost` once all containers are healthy.
 
-## Build Options
-The build.sh script accepts the following arguments:
+
+## For Developers
+If you want to build the containers yourself or contribute to development:
+
+1. Clone this repository:
+```bash
+git clone https://github.com/aktin/docker-aktin-dwh .git
+cd docker-aktin-dwh 
+```
+
+2. Run the build script:
+```bash
+./src/build.sh
+```
+
+The build script accepts the following arguments:
 
 * `--cleanup`: Remove build files and downloads after image creation
 * `--force-rebuild`: Force a complete image recreation
 * `--use-main-branch`: Use current version from main branch instead of release versions
+* `--create-latest`: Create additional containers tagged as 'latest'
+
+3. Run the container locally using:
+```bash
+cd build/
+docker compose -f compose.dev.yml up -d 
+```
 
 ## Services
 
@@ -31,14 +53,14 @@ The build.sh script accepts the following arguments:
 
 * Image: `notaufnahme-dwh-database`
 * Provides preconfigured database environment for i2b2 and AKTIN
-* Volume mounted at /var/lib/postgresql/data
+* Volume mounted at `/var/lib/postgresql/data`
 
 ### WildFly Application Server (wildfly)
 
 * Image: `notaufnahme-dwh-wildfly`
 * Java application server with i2b2 and AKTIN components
 * Includes Python and R data processing capabilities
-* Volumes mounted at /etc/aktin and /var/lib/aktin
+* Volumes mounted at `/etc/aktin` and `/var/lib/aktin`
 
 ### Apache Web Server (httpd)
 

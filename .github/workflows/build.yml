@@ -29,14 +29,6 @@ jobs:
       - name: Build Dockerfiles
         run: build.sh
 
-      - name: Install
-        run: |
-          docker compose build
-          docker compose -f sample/docker-compose.yml up -d
-
-#      - name: Test
-#        run:  # TODO
-
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:

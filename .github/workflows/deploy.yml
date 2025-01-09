@@ -7,16 +7,14 @@ on:
         description: 'Name of the artifact to download'
         default: 'dockerfiles'
         type: string
-      tag-base:
-        description: 'Prefix of the docker tags (either ghcr.io/aktin/notaufnahme-i2b2 or ghcr.io/aktin/notaufnahme-dwh)'
-        required: true
-        type: string
 
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    env:
+      TAG_BASE: ghcr.io/aktin/notaufnahme-dwh
     steps:
       - name: Prepare Version Variable
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
@@ -38,8 +36,8 @@ jobs:
         with:
           context: httpd/
           tags: |
-            ${{ inputs.tag-base }}-httpd:latest
-            ${{ inputs.tag-base }}-httpd:$VERSION
+            ${{ env.TAG_BASE }}-httpd:latest
+            ${{ env.TAG_BASE }}-httpd:$VERSION
           push: true
 
       - name: Build and push docker image for ${{ github.job }} [database]
@@ -47,8 +45,8 @@ jobs:
         with:
           context: database/
           tags: |
-            ${{ inputs.tag-base }}-database:latest
-            ${{ inputs.tag-base }}-database:$VERSION
+            ${{ env.TAG_BASE }}-database:latest
+            ${{ env.TAG_BASE }}-database:$VERSION
           push: true
 
       - name: Build and push docker image for ${{ github.job }} [wildfly]
@@ -56,6 +54,6 @@ jobs:
         with:
           context: wildfly/
           tags: |
-            ${{ inputs.tag-base }}-wildfly:latest
-            ${{ inputs.tag-base }}-wildfly:$VERSION
+            ${{ env.TAG_BASE }}-wildfly:latest
+            ${{ env.TAG_BASE }}-wildfly:$VERSION
           push: true

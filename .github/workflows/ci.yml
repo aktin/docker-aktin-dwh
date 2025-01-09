@@ -16,5 +16,3 @@ jobs:
   deploy:
     needs: build
     uses: ./.github/workflows/deploy.yml@main
-    with:
-      tag-base: 'ghcr.io/aktin/notaufnahme-dwh'

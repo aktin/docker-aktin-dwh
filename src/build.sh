@@ -1,9 +1,8 @@
 #!/bin/bash
 #--------------------------------------
 # Script Name:  build.sh
-# Version:      1.2
+# Version:      1.3
 # Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
-# Date:         18 Dec 24
 # Purpose:      Automates the build process for AKTIN emergency department system containers. Downloads required artifacts, prepares container
 #               environments for PostgreSQL, WildFly and Apache2, and builds Docker images for deployment.
 #--------------------------------------

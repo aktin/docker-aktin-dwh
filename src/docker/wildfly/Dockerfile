@@ -1,8 +1,6 @@
 # --------------------------------------
 # WildFly Application Server for i2b2/AKTIN
-# Version:      1.0
 # Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
-# Date:         16 Dec 24
 # Purpose:      Provides Java application server environment with i2b2 and AKTIN components
 #               along with Python and R data processing capabilities for the emergency
 #               department system. Includes German locale support and security configurations.

@@ -7,14 +7,17 @@
 
 FROM php:__APACHE_VERSION__
 
-# Build-time metadata
-LABEL org.opencontainers.image.title="AKTIN Apache2"
-LABEL org.opencontainers.image.description="Apache/PHP web server with i2b2 interface and AKTIN integration"
-LABEL org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de"
-LABEL org.opencontainers.image.version="__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_VERSION__"
-LABEL org.opencontainers.image.vendor="AKTIN"
+ARG BUILD_TIME
 
-# PHP and Apache configuration
+LABEL org.opencontainers.image.created=${BUILD_TIME} \
+    org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de" \
+    org.opencontainers.image.source="https://github.com/aktin/docker-aktin-dwh" \
+    org.opencontainers.image.version="__DWH_GITHUB_TAG__" \
+    org.opencontainers.image.revision="__HTTPD_CONTAINER_VERSION__" \
+    org.opencontainers.image.vendor="AKTIN" \
+    org.opencontainers.image.title="AKTIN Apache2" \
+    org.opencontainers.image.description="Apache/PHP web server with i2b2 interface and AKTIN integration"
+
 COPY ./webclient /var/www/html/webclient
 COPY ./aktin-j2ee-reverse-proxy.conf /etc/apache2/conf-available/
 

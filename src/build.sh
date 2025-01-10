@@ -1,9 +1,8 @@
 #!/bin/bash
 #--------------------------------------
 # Script Name:  build.sh
-# Version:      1.2
+# Version:      1.3
 # Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
-# Date:         18 Dec 24
 # Purpose:      Automates the build process for AKTIN emergency department system containers. Downloads required artifacts, prepares container
 #               environments for PostgreSQL, WildFly and Apache2, and builds Docker images for deployment.
 #--------------------------------------
@@ -21,7 +20,7 @@ usage() {
   echo "Usage: $0 [--cleanup] [--force-rebuild] [--use-main-branch] [--create-latest]" >&2
   echo "  --cleanup          Optional: Remove build files and downloads after image creation" >&2
   echo "  --force-rebuild    Optional: Force a complete image recreation" >&2
-  echo "  --use-main-branch  Optional: Download the current version from main branch instead of the specific release versions" >&2
+  echo "  --use-main-branch  Optional: Download the current main branch from the git repositories instead of the specific release versions" >&2
   echo "  --create-latest    Optional: Create additional containers tagged as 'latest'" >&2
   exit 1
 }
@@ -61,15 +60,13 @@ readonly DIR_BUILD="${DIR_SRC}/build"
 readonly DIR_RESOURCES="${DIR_SRC}/resources"
 readonly DIR_DOWNLOADS="${DIR_SRC}/downloads"
 
-load_docker_environment_variables() {
-  if [ -f "${DIR_SRC}/.env" ]; then
-    set -a
-    . "${DIR_SRC}/.env"
-    set +a
-  else
-    echo "Error: .env file not found in ${DIR_SRC}" >&2
-    exit 1
-  fi
+# Load version-specific variables from file
+set -a
+. "${DIR_RESOURCES}/versions"
+set +a
+
+init_build_environment() {
+  echo "Initializing build environment..."
   if [[ ! -d "${DIR_BUILD}" ]]; then
     mkdir -p "${DIR_BUILD}"
   fi
@@ -262,7 +259,7 @@ prepare_wildfly_docker() {
 prepare_docker_compose() {
   local dev_compose="${DIR_BUILD}/compose.dev.yml"
   local prod_compose="${DIR_BUILD}/compose.yml"
-  local template="${DIR_DOCKER}/compose.yml"
+  local template="${DIR_DOCKER}/template.yml"
 
   create_dev_compose() {
     sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" \
@@ -275,7 +272,7 @@ prepare_docker_compose() {
 
   create_prod_compose() {
     cp "${dev_compose}" "${prod_compose}"
-    sed -i '/build:/d; /context:/d' "${prod_compose}"
+    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
   }
 
   create_dev_compose
@@ -314,10 +311,11 @@ build_docker_images() {
   # Build versioned images
   if [ "${FORCE_REBUILD}" = true ]; then
     echo "Forcing image rebuild..."
-    docker compose -f compose.dev.yml build --no-cache
+    BUILD_ARGS="--no-cache"
   else
-    docker compose -f compose.dev.yml build
+    BUILD_ARGS=""
   fi
+  BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") docker compose -f compose.dev.yml build ${BUILD_ARGS}
 
   # Create latest tagged images if requested
   if [ "${CREATE_LATEST}" = true ]; then
@@ -343,7 +341,7 @@ build_docker_images() {
 
 main() {
   set -euo pipefail
-  load_docker_environment_variables
+  init_build_environment
   download_artifacts
   extract_artifacts
   execute_build_scripts

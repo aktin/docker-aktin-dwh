@@ -20,7 +20,7 @@ usage() {
   echo "Usage: $0 [--cleanup] [--force-rebuild] [--use-main-branch] [--create-latest]" >&2
   echo "  --cleanup          Optional: Remove build files and downloads after image creation" >&2
   echo "  --force-rebuild    Optional: Force a complete image recreation" >&2
-  echo "  --use-main-branch  Optional: Download the current version from main branch instead of the specific release versions" >&2
+  echo "  --use-main-branch  Optional: Download the current main branch from the git repositories instead of the specific release versions" >&2
   echo "  --create-latest    Optional: Create additional containers tagged as 'latest'" >&2
   exit 1
 }
@@ -272,7 +272,7 @@ prepare_docker_compose() {
 
   create_prod_compose() {
     cp "${dev_compose}" "${prod_compose}"
-    sed -i '/build:/d; /context:/d' "${prod_compose}"
+    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
   }
 
   create_dev_compose
@@ -311,10 +311,11 @@ build_docker_images() {
   # Build versioned images
   if [ "${FORCE_REBUILD}" = true ]; then
     echo "Forcing image rebuild..."
-    docker compose -f compose.dev.yml build --no-cache
+    BUILD_ARGS="--no-cache"
   else
-    docker compose -f compose.dev.yml build
+    BUILD_ARGS=""
   fi
+  BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") docker compose -f compose.dev.yml build ${BUILD_ARGS}
 
   # Create latest tagged images if requested
   if [ "${CREATE_LATEST}" = true ]; then

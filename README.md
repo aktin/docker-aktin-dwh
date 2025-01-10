@@ -17,8 +17,19 @@ curl -LO https://github.com/aktin/docker-aktin-dwh/releases/latest/download/comp
 ```
 docker compose up -d
 ```
-The system will be available at `http://localhost` once all containers are healthy.
+The system will be available at `http://localhost` once all containers are started.
 
+To run multiple AKTIN instances on the same server, configure unique ports and project names for each instance by setting the appropriate values to `PROJECT_NAME` and `HTTP_PORT`:
+
+```bash
+# Instance 1
+PROJECT_NAME=aktin1 HTTP_PORT=80 docker compose up -d
+
+# Instance 2
+PROJECT_NAME=aktin2 HTTP_PORT=81 docker compose up -d
+```
+
+Each instance will be isolated with its own network, volumes, and ports.
 
 ## For Developers
 If you want to build the containers yourself or contribute to development:
@@ -66,4 +77,9 @@ docker compose -f compose.dev.yml up -d
 
 * Image: `notaufnahme-dwh-httpd`
 * Provides i2b2 web interface and reverse proxy configuration
-* Exposed on port 80
+* Default port: 80 (configurable via HTTP_PORT environment variable)
+
+## Environment Variables
+
+* `PROJECT_NAME`: Sets the project name for the Docker Compose deployment (default: build)
+* `HTTP_PORT`: Sets the exposed port for the Apache web server (default: 80)

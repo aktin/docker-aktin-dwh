@@ -38,8 +38,6 @@ services:
     volumes:
       - aktin_config:/etc/aktin
       - aktin_data:/var/lib/aktin
-    expose:
-      - "8080"
     depends_on:
       database:
         condition: service_healthy

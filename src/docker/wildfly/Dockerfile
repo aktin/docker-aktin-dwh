@@ -33,21 +33,18 @@ RUN apt-get update && apt-get install -y locales && \
 # Install essential packages and clean up APT cache
 RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ && rm -rf /var/lib/apt/lists/*
 
-# Setup WildFly user and environment
 RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly
 
-# Copy WildFly distribution
 WORKDIR /opt/wildfly
 COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
 
 # Enable Wildfly to read aktin.properties
-# Change ownership of WildFly directories to 'wildfly' user
 RUN ln -sf /etc/aktin/aktin.properties ./standalone/configuration/ \
    && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin
 
-EXPOSE 8080 9990
+EXPOSE 8080
 
 # Switch back to WildFly user for enhanced security
 USER wildfly

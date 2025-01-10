@@ -60,15 +60,13 @@ readonly DIR_BUILD="${DIR_SRC}/build"
 readonly DIR_RESOURCES="${DIR_SRC}/resources"
 readonly DIR_DOWNLOADS="${DIR_SRC}/downloads"
 
-load_docker_environment_variables() {
-  if [ -f "${DIR_SRC}/.env" ]; then
-    set -a
-    . "${DIR_SRC}/.env"
-    set +a
-  else
-    echo "Error: .env file not found in ${DIR_SRC}" >&2
-    exit 1
-  fi
+# Load version-specific variables from file
+set -a
+. "${DIR_RESOURCES}/versions"
+set +a
+
+init_build_environment() {
+  echo "Initializing build environment..."
   if [[ ! -d "${DIR_BUILD}" ]]; then
     mkdir -p "${DIR_BUILD}"
   fi
@@ -342,7 +340,7 @@ build_docker_images() {
 
 main() {
   set -euo pipefail
-  load_docker_environment_variables
+  init_build_environment
   download_artifacts
   extract_artifacts
   execute_build_scripts

@@ -7,6 +7,7 @@
 #               - Apache2 reverse proxy with i2b2 webclient
 # --------------------------------------
 
+name: ${PROJECT_NAME:-build}
 services:
   database:
     image: __IMAGE_NAMESPACE__-database:__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_VERSION__
@@ -51,7 +52,7 @@ services:
     build:
       context: ./httpd
     ports:
-      - "80:80"
+      - "${HTTP_PORT:-80}:80"
     depends_on:
       - wildfly
     healthcheck:

@@ -259,7 +259,7 @@ prepare_wildfly_docker() {
 prepare_docker_compose() {
   local dev_compose="${DIR_BUILD}/compose.dev.yml"
   local prod_compose="${DIR_BUILD}/compose.yml"
-  local template="${DIR_DOCKER}/compose.yml"
+  local template="${DIR_DOCKER}/template.yml"
 
   create_dev_compose() {
     sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" \

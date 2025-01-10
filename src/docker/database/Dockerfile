@@ -9,7 +9,6 @@
 FROM postgres:__POSTGRESQL_VERSION__
 
 ARG BUILD_TIME
-ARG POSTGRES_PASSWORD=postgres
 
 LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de" \
@@ -19,6 +18,8 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.vendor="AKTIN" \
     org.opencontainers.image.title="AKTIN PostgreSQL" \
     org.opencontainers.image.description="PostgreSQL database with i2b2/AKTIN schema"
+
+ENV POSTGRES_PASSWORD=postgres
 
 WORKDIR /sql.d
 COPY ./sql/* ./

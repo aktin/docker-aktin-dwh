@@ -13,6 +13,23 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml@main
 
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: 'dockerfiles'
+
+      - name: Install
+        run: |
+          docker compose build
+          docker compose -f sample/docker-compose.yml up -d
+
+#      - name: Test
+#        run:  # TODO
+
   deploy:
     needs: build
     uses: ./.github/workflows/deploy.yml@main

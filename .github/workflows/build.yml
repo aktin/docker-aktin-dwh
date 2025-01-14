@@ -11,14 +11,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/docker
     steps:
       - uses: actions/checkout@v4
 
       - name: Generate Cache Name
         run: echo "CACHE=${sort versions | awk '!/(^[[:space:]]*$|PACKAGE_VERSION=|#)/' ORS='--'}" >> $GITHUB_ENV
+        working-directory: src/docker
 
       - name: Retrieve Cached Downloads
         uses: actions/cache@v4
@@ -28,12 +26,12 @@ jobs:
 
       - name: Build Dockerfiles
         run: build.sh
+        working-directory: src/docker
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
           path: |
-            database/
-            httpd/
-            wildfly/
+            src/build
+            !src/build/compose.yml

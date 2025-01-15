@@ -35,3 +35,4 @@ jobs:
           path: |
             src/build
             !src/build/compose.yml
+          if-no-files-found: 'error'

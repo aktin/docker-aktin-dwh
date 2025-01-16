@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Generate Cache Name
-        run: echo "CACHE=${sort versions | awk '!/(^[[:space:]]*$|PACKAGE_VERSION=|#)/' ORS='--'}" >> $GITHUB_ENV
+        run: echo "CACHE=${sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--'}" >> $GITHUB_ENV
         working-directory: src/docker
 
       - name: Retrieve Cached Downloads

@@ -69,7 +69,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push docker image for ${{ github.job }} [httpd]
+      # TODO one step per image (are we using this?) DONE
       - name: Build and Push Docker Image HTTPD
         uses: docker/build-push-action@v6
         with:
@@ -90,3 +90,15 @@ jobs:
           context: wildfly/
           tags: ${{ steps.meta-wildfly.outputs.tags }}
           push: true
+
+      - name: Rename Production Compose File
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: mv compose.prod.yml compose.yml
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: compose.yml
+          fail_on_unmatched_files: true
+          make_latest: true

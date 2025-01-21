@@ -70,20 +70,21 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push docker image for ${{ github.job }} [httpd]
+      - name: Build and Push Docker Image HTTPD
         uses: docker/build-push-action@v6
         with:
           context: httpd/
           tags: ${{ steps.meta-httpd.outputs.tags }}
           push: true
 
-      - name: Build and push docker image for ${{ github.job }} [database]
+      - name: Build and Push Docker Image Database
         uses: docker/build-push-action@v6
         with:
           context: database/
           tags: ${{ steps.meta-database.outputs.tags }}
           push: true
 
-      - name: Build and push docker image for ${{ github.job }} [wildfly]
+      - name: Build and Push Docker Image Wildfly
         uses: docker/build-push-action@v6
         with:
           context: wildfly/

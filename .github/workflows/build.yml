@@ -1,4 +1,4 @@
-name: AKTIN Build Docker
+name: Build AKTIN Docker Images
 
 on:
   workflow_call:

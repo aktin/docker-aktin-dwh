@@ -8,7 +8,6 @@ on:
         default: 'dockerfiles'
         type: string
 
-
 jobs:
   deploy:
     runs-on: ubuntu-latest

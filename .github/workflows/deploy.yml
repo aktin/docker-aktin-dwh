@@ -68,7 +68,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # TODO one step per image (are we using this?) DONE
       - name: Build and Push Docker Image HTTPD
         uses: docker/build-push-action@v6
         with:

@@ -37,7 +37,6 @@ jobs:
         with:
           images: ghcr.io/aktin/notaufnahme-dwh-httpd
           tags: |
-            type=raw,value=current,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=raw,value=${{ steps.prep-versions.outputs.httpd }},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
@@ -47,7 +46,6 @@ jobs:
         with:
           images: ghcr.io/aktin/notaufnahme-dwh-database
           tags: |
-            type=raw,value=current,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=raw,value=${{ steps.prep-versions.outputs.database }},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
@@ -57,7 +55,6 @@ jobs:
         with:
           images: ghcr.io/aktin/notaufnahme-dwh-wildfly
           tags: |
-            type=raw,value=current,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=raw,value=${{ steps.prep-versions.outputs.wildfly }},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 

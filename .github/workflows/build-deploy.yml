@@ -28,11 +28,21 @@ jobs:
         run: build.sh --create-latest
         working-directory: src/docker
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
+      - name: Login to GitHub Docker Registry
+        uses: docker/login-action@v3
         with:
-          name: ${{ inputs.artifact-name }}
-          path: |
-            src/build
-            !src/build/compose.yml
-          if-no-files-found: 'error'
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy Dockerfiles
+        run: docker compose -f compose.yml push
+        working-directory: src/build
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: src/build/compose.yml
+          fail_on_unmatched_files: true
+          make_latest: true

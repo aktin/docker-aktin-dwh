@@ -86,10 +86,6 @@ jobs:
           tags: ${{ steps.meta-wildfly.outputs.tags }}
           push: true
 
-      - name: Rename Production Compose File
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: mv compose.prod.yml compose.yml
-
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')

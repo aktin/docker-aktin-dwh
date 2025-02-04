@@ -26,7 +26,7 @@ jobs:
 
       - name: Build Dockerfiles
         run: build.sh --create-latest
-        working-directory: src/docker
+        working-directory: src
 
       - name: Login to GitHub Docker Registry
         uses: docker/login-action@v3

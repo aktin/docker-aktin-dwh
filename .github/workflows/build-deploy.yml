@@ -2,11 +2,6 @@ name: Build AKTIN Docker Images
 
 on:
   workflow_call:
-    inputs:
-      artifact-name:
-        description: 'Artifact name'
-        default: 'dockerfiles'
-        type: string
 
 jobs:
   build:

@@ -16,6 +16,8 @@ services:
       context: ./database
       args:
         BUILD_TIME: "${BUILD_TIME}"
+    environment:
+      POSTGRES_PASSWORD: postgres
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:

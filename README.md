@@ -17,7 +17,7 @@ curl -LO https://github.com/aktin/docker-aktin-dwh/releases/latest/download/comp
 ```
 docker compose up -d
 ```
-The system will be available at `http://localhost` once all containers are started.
+The system will be available at `http://localhost` once all containers are started. Please use the provided volumes, currently [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/) [are not supported](https://github.com/aktin/docker-aktin-dwh/issues/6).
 
 To run multiple AKTIN instances on the same server, configure unique ports and project names for each instance by setting the appropriate values to `PROJECT_NAME` and `HTTP_PORT`:
 

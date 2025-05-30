@@ -19,17 +19,47 @@ docker compose up -d
 ```
 The system will be available at `http://localhost` once all containers are started. Please use the provided volumes, currently [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/) [are not supported](https://github.com/aktin/docker-aktin-dwh/issues/6).
 
-To run multiple AKTIN instances on the same server, configure unique ports and project names for each instance by setting the appropriate values to `PROJECT_NAME` and `HTTP_PORT`:
+### Running Multiple AKTIN Instances on the Same Server
+
+To run multiple AKTIN instances on the same server, configure unique ports and project names for each instance by setting the appropriate values to `PROJECT_NAME` and `HTTP_PORT`. Each instance will be isolated with its own network, volumes, and ports.
+
+#### Option 1 : Inline environment variables
+
+Start each instance with:
 
 ```bash
 # Instance 1
-PROJECT_NAME=aktin1 HTTP_PORT=80 docker compose up -d
+PROJECT_NAME=aktin1 HTTP_PORT=80 docker compose -f /path/to/compose.yml up -d
 
 # Instance 2
-PROJECT_NAME=aktin2 HTTP_PORT=81 docker compose up -d
+PROJECT_NAME=aktin2 HTTP_PORT=81 docker compose -f /path/to/compose.yml up -d
 ```
 
-Each instance will be isolated with its own network, volumes, and ports.
+#### Option 2 : Using `.env` files
+Alternatively, create two `.env` files with different values, e.g.,
+
+`.env1`:
+```bash
+PROJECT_NAME=aktin1
+HTTP_PORT=80
+```
+
+`.env2`:
+```bash
+PROJECT_NAME=aktin2
+HTTP_PORT=81
+```
+
+Start each instance with:
+
+```bash
+# Instance 1
+docker compose -f /path/to/compose.yml --env-file .env1 up -d
+
+# Instance 2
+docker compose -f /path/to/compose.yml --env-file .env2 up -d
+```
+
 
 ## For Developers
 If you want to build the containers yourself or contribute to development:

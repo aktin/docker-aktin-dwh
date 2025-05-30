@@ -335,7 +335,7 @@ build_docker_images() {
   if [[ "${CLEANUP}" == true ]]; then
     echo "Cleaning up build artifacts..."
     rm -r "${DIR_BUILD}/"{database,wildfly,httpd}
-    rm -r "${DIR_DOWNLOADS}"
+    [[ "${DIR_DOWNLOADS}" != "/" && -n "${DIR_DOWNLOADS}" ]] && rm -rf "${DIR_DOWNLOADS}"
   fi
 }
 

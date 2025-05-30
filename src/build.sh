@@ -9,6 +9,13 @@
 
 set -euo pipefail
 
+for cmd in curl unzip docker; do
+  command -v $cmd >/dev/null || {
+    echo "Error: $cmd is required but not installed." >&2
+    exit 1
+  }
+done
+
 readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
 
 CLEANUP=false

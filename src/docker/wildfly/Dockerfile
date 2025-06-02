@@ -41,7 +41,7 @@ COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
 
 # Enable Wildfly to read aktin.properties
-RUN ln -sf /etc/aktin/aktin.properties ./standalone/configuration/ \
+RUN ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/ \
    && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin
 
 EXPOSE 8080

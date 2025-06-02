@@ -17,7 +17,7 @@ curl -LO https://github.com/aktin/docker-aktin-dwh/releases/latest/download/comp
 ```
 docker compose up -d
 ```
-The system will be available at `http://localhost` once all containers have started. For [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/), the property files must be copied manually into the `aktin_config` folder. See [this issue]([https://github.com/aktin/docker-aktin-dwh/issues/6](https://github.com/aktin/docker-aktin-dwh/issues/10)) for details.
+The system will be available at `http://localhost` once all containers have started.
 
 
 ### Running Multiple AKTIN Instances on the Same Server

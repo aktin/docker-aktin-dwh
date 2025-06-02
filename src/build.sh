@@ -246,8 +246,16 @@ prepare_wildfly_docker() {
     echo "Copying AKTIN components..."
     cp -r "${base_dir}/var/lib/aktin/import-scripts/"* "${build_dir}/import-scripts/"
     cp -r "${base_dir}/etc/aktin/aktin.properties" "${build_dir}/"
+    # dev mode properties
+    # TODO dev mode api key missing
+    sed -e 's|^broker\.uris=.*|broker.uris=https://aktin-test-broker.klinikum.rwth-aachen.de/broker/|' \
+        -e 's|^broker\.intervals=.*|broker.intervals=PT1M|' \
+        -e 's|^local\.cn=.*|local.cn=DEV MODE DWH|' \
+        "${base_dir}/etc/aktin/aktin.properties" > "${build_dir}/aktin-dev.properties"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
   }
+  # TODO copy entrypoint.sh to build/wildfly/
+
   # get all openjdk, python and R dependencies of debian package
   get_package_dependencies() {
    local pkg_name="$1"

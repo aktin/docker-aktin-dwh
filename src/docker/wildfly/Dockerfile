@@ -9,6 +9,7 @@
 FROM ubuntu:__UBUNTU_VERSION__
 
 ARG BUILD_TIME
+ARG DEV_MODE=false
 
 LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de" \
@@ -39,6 +40,8 @@ WORKDIR /opt/wildfly
 COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
+COPY ./aktin-dev.properties /etc/aktin/.dev/
+COPY ./entrypoint.sh /entrypoint.sh
 
 # Enable Wildfly to read aktin.properties
 RUN ln -sf /etc/aktin/aktin.properties ./standalone/configuration/ \
@@ -49,4 +52,5 @@ EXPOSE 8080
 # Switch back to WildFly user for enhanced security
 USER wildfly
 
-CMD ["/opt/wildfly/bin/standalone.sh", "-b", "0.0.0.0"]
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

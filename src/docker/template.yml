@@ -7,7 +7,6 @@
 #               - Apache2 reverse proxy with i2b2 webclient
 # --------------------------------------
 
-name: ${PROJECT_NAME:-build}
 services:
   database:
     image: __IMAGE_NAMESPACE__-database:__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_VERSION__

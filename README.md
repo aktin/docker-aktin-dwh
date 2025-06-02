@@ -21,32 +21,15 @@ The system will be available at `http://localhost` once all containers are start
 
 ### Running Multiple AKTIN Instances on the Same Server
 
-To run multiple AKTIN instances on the same server, configure unique ports and project names for each instance by setting the appropriate values to `PROJECT_NAME` and `HTTP_PORT`. Each instance will be isolated with its own network, volumes, and ports.
+To run multiple AKTIN instances on the same server, place each instance in a separate folder and assign unique ports per instance (`HTTP_PORT`). Docker Compose will automatically use the folder name as the project name, isolating container names, networks, and volumes. You can configure the individual instances using `.env` files:
 
-#### Option 1 : Inline environment variables
-
-Start each instance with:
-
+`/opt/docker-deploy/aktin1/.env1`:
 ```bash
-# Instance 1
-PROJECT_NAME=aktin1 HTTP_PORT=80 docker compose -f /path/to/compose.yml up -d
-
-# Instance 2
-PROJECT_NAME=aktin2 HTTP_PORT=81 docker compose -f /path/to/compose.yml up -d
-```
-
-#### Option 2 : Using `.env` files
-Alternatively, create two `.env` files with different values, e.g.,
-
-`.env1`:
-```bash
-PROJECT_NAME=aktin1
 HTTP_PORT=80
 ```
 
-`.env2`:
+`/opt/docker-deploy/aktin2/.env2`:
 ```bash
-PROJECT_NAME=aktin2
 HTTP_PORT=81
 ```
 
@@ -54,12 +37,13 @@ Start each instance with:
 
 ```bash
 # Instance 1
-docker compose -f /path/to/compose.yml --env-file .env1 up -d
+cd /opt/docker-deploy/aktin1
+docker compose up -d
 
 # Instance 2
-docker compose -f /path/to/compose.yml --env-file .env2 up -d
+cd /opt/docker-deploy/aktin2
+docker compose up -d
 ```
-
 
 ## For Developers
 If you want to build the containers yourself or contribute to development:
@@ -107,9 +91,8 @@ docker compose -f compose.dev.yml up -d
 
 * Image: `notaufnahme-dwh-httpd`
 * Provides i2b2 web interface and reverse proxy configuration
-* Default port: 80 (configurable via HTTP_PORT environment variable)
+* Default port: **80** (configurable via `HTTP_PORT` environment variable)
 
 ## Environment Variables
 
-* `PROJECT_NAME`: Sets the project name for the Docker Compose deployment (default: build)
 * `HTTP_PORT`: Sets the exposed port for the Apache web server (default: 80)

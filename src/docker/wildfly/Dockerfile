@@ -39,14 +39,18 @@ WORKDIR /opt/wildfly
 COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
+COPY ./aktin.properties /opt/default-aktin.properties
 
 # Enable Wildfly to read aktin.properties
 RUN ln -sf /etc/aktin/aktin.properties ./standalone/configuration/ \
    && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8080
 
 # Switch back to WildFly user for enhanced security
 USER wildfly
 
-CMD ["/opt/wildfly/bin/standalone.sh", "-b", "0.0.0.0"]
+ENTRYPOINT ["/entrypoint.sh"]

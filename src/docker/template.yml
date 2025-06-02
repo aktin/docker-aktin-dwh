@@ -40,7 +40,7 @@ services:
       DB_HOST: database
       DB_PORT: 5432
     volumes:
-      - aktin_config:/etc/aktin
+      - ./configuration:/etc/aktin
       - aktin_data:/var/lib/aktin
     depends_on:
       database:
@@ -76,8 +76,6 @@ services:
 
 volumes:
   pg_data:
-    driver: local
-  aktin_config:
     driver: local
   aktin_data:
     driver: local

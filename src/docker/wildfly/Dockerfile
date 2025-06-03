@@ -39,7 +39,7 @@ WORKDIR /opt/wildfly
 COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
-COPY ./aktin.properties /opt/default-aktin.properties
+COPY ./aktin.properties /usr/share/aktin/default-aktin.properties
 
 # Enable Wildfly to read aktin.properties
 RUN ln -sf /etc/aktin/aktin.properties ./standalone/configuration/ \

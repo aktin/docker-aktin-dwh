@@ -247,7 +247,7 @@ prepare_wildfly_docker() {
     cp -r "${base_dir}/var/lib/aktin/import-scripts/"* "${build_dir}/import-scripts/"
     cp -r "${base_dir}/etc/aktin/aktin.properties" "${build_dir}/"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
-    cp "${DIR_RESOURCES}/entrypoint.sh" "${build_dir}/"
+    cp "${DIR_RESOURCES}/wildfly/entrypoint.sh" "${build_dir}/"
 }
   # get all openjdk, python and R dependencies of debian package
   get_package_dependencies() {

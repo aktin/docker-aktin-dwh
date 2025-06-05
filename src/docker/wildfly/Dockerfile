@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y locales && \
     update-locale LANG=de_DE.UTF-8
 
 # Install essential packages and clean up APT cache
-RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ wget && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly
 
@@ -44,7 +44,7 @@ COPY ./aktin-dev.properties /etc/aktin/.dev/
 COPY ./entrypoint.sh /entrypoint.sh
 
 # Enable Wildfly to read aktin.properties
-RUN ln -sf /etc/aktin/aktin.properties ./standalone/configuration/ \
+RUN ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/ \
    && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin
 
 EXPOSE 8080

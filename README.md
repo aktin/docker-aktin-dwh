@@ -12,8 +12,11 @@ A containerized deployment of the AKTIN emergency department system using Docker
 ```bash
 curl -LO https://github.com/aktin/docker-aktin-dwh/releases/latest/download/compose.yml
 ```
-
-2. Start the containers:
+2. In the folder of the `compose.yml` script create a secret file with a strong password:
+```bash
+echo 'mysecretpassword' > secret.txt
+```
+3. Start the containers:
 ```
 docker compose up -d
 ```

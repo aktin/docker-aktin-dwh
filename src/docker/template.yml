@@ -1,6 +1,6 @@
 # --------------------------------------
 # Script Name:  compose.yml
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
 # Purpose:      Defines AKTIN emergency department system services:
 #               - PostgreSQL database with i2b2/AKTIN schema
 #               - WildFly application server
@@ -17,7 +17,9 @@ services:
       args:
         BUILD_TIME: "${BUILD_TIME}"
     environment:
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -46,7 +48,7 @@ services:
       database:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "http://localhost:8080/aktin/admin/rest/info/version", "|", "grep", "200" ]
+      test: [ "CMD-SHELL", "wget --server-response --spider http://127.0.0.1:9090/aktin/admin/rest/info/version 2>&1 | awk '/^  HTTP/{print $2}'" ]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -85,3 +87,7 @@ volumes:
 networks:
   aktin-network:
     driver: bridge
+
+secrets:
+  postgres_password:
+    file: ./secret.txt

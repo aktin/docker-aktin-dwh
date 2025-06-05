@@ -40,7 +40,7 @@ WORKDIR /opt/wildfly
 COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
-COPY ./aktin-dev.properties /usr/share/aktin/
+COPY ./dev-aktin.properties /usr/share/aktin/
 COPY ./entrypoint.sh /entrypoint.sh
 
 # Set permissions and link configuration

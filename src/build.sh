@@ -15,6 +15,14 @@ for cmd in curl unzip docker; do
   }
 done
 
+readonly DIR_PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly API_KEY_FILE="${DIR_PROJECT}/dev-secrets/apikey.txt"
+if [ ! -f "$API_KEY_FILE" ]; then
+  echo "Error: Missing API key at $API_KEY_FILE"
+  exit 1
+fi
+API_KEY=$(<"$API_KEY_FILE")
+
 readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
 
 CLEANUP=false

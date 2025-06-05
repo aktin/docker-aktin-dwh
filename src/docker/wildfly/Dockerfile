@@ -39,9 +39,9 @@ RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly
 WORKDIR /opt/wildfly
 COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
+COPY ./entrypoint.sh /entrypoint.sh
 COPY ./aktin.properties /etc/aktin/
 COPY ./dev-aktin.properties /usr/share/aktin/
-COPY ./entrypoint.sh /entrypoint.sh
 COPY ./aktin.properties /usr/share/aktin/default-aktin.properties
 
 # Set permissions and link configuration

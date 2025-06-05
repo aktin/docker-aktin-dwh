@@ -1,6 +1,6 @@
 # --------------------------------------
 # WildFly Application Server for i2b2/AKTIN
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
 # Purpose:      Provides Java application server environment with i2b2 and AKTIN components
 #               along with Python and R data processing capabilities for the emergency
 #               department system. Includes German locale support and security configurations.
@@ -40,17 +40,17 @@ WORKDIR /opt/wildfly
 COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
-COPY ./aktin-dev.properties /etc/aktin/.dev/
+COPY ./aktin-dev.properties /usr/share/aktin/
 COPY ./entrypoint.sh /entrypoint.sh
 
-# Enable Wildfly to read aktin.properties
-RUN ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/ \
-   && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin
+# Set permissions and link configuration
+RUN chmod +x /entrypoint.sh \
+ && ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/ \
+ && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin /usr/share/aktin/
 
 EXPOSE 8080
 
 # Switch back to WildFly user for enhanced security
 USER wildfly
 
-RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]

@@ -1,6 +1,6 @@
 # --------------------------------------
 # Script Name:  compose.yml
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
 # Purpose:      Defines AKTIN emergency department system services:
 #               - PostgreSQL database with i2b2/AKTIN schema
 #               - WildFly application server
@@ -19,7 +19,7 @@ services:
     environment:
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     secrets:
-     - postgres_password
+      - postgres_password
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:

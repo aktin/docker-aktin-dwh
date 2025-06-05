@@ -1,8 +1,7 @@
 #!/bin/bash
 #--------------------------------------
 # Script Name:  build.sh
-# Version:      1.3
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
 # Purpose:      Automates the build process for AKTIN emergency department system containers. Downloads required artifacts, prepares container
 #               environments for PostgreSQL, WildFly and Apache2, and builds Docker images for deployment.
 #--------------------------------------
@@ -247,15 +246,14 @@ prepare_wildfly_docker() {
     cp -r "${base_dir}/var/lib/aktin/import-scripts/"* "${build_dir}/import-scripts/"
     cp -r "${base_dir}/etc/aktin/aktin.properties" "${build_dir}/"
     # dev mode properties
-    # TODO dev mode api key missing
-    sed -e 's|^broker\.uris=.*|broker.uris=https://aktin-test-broker.klinikum.rwth-aachen.de/broker/|' \
-        -e 's|^broker\.intervals=.*|broker.intervals=PT1M|' \
-        -e 's|^local\.cn=.*|local.cn=DEV MODE DWH|' \
+    sed -e "s|^broker\.uris=.*|broker.uris=https://aktin-test-broker.klinikum.rwth-aachen.de/broker/|" \
+        -e "s|^broker\.intervals=.*|broker.intervals=PT1M|" \
+        -e "s|^local\.cn=.*|local.cn=DEV MODE DWH|" \
+        -e "s|^broker\.keys=.*|broker.keys=${API_KEY}|" \
         "${base_dir}/etc/aktin/aktin.properties" > "${build_dir}/aktin-dev.properties"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
+    cp "${DIR_RESOURCES}/wildfly/entrypoint.sh" "${build_dir}/"
   }
-  # TODO copy entrypoint.sh to build/wildfly/
-
   # get all openjdk, python and R dependencies of debian package
   get_package_dependencies() {
    local pkg_name="$1"
@@ -297,7 +295,7 @@ prepare_docker_compose() {
 
   create_prod_compose() {
     cp "${dev_compose}" "${prod_compose}"
-    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
+    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d; /wildfly_deployments:/,/^[^ ]/d' "${prod_compose}"
   }
 
   create_dev_compose

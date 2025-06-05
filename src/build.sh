@@ -1,8 +1,7 @@
 #!/bin/bash
 #--------------------------------------
 # Script Name:  build.sh
-# Version:      1.3
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
 # Purpose:      Automates the build process for AKTIN emergency department system containers. Downloads required artifacts, prepares container
 #               environments for PostgreSQL, WildFly and Apache2, and builds Docker images for deployment.
 #--------------------------------------
@@ -15,6 +14,14 @@ for cmd in curl unzip docker; do
     exit 1
   }
 done
+
+readonly DIR_PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly API_KEY_FILE="${DIR_PROJECT}/dev-secrets/apikey.txt"
+if [ ! -f "$API_KEY_FILE" ]; then
+  echo "Error: Missing Dev API key at $API_KEY_FILE"
+  exit 1
+fi
+API_KEY=$(<"$API_KEY_FILE")
 
 readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
 
@@ -246,7 +253,14 @@ prepare_wildfly_docker() {
     echo "Copying AKTIN components..."
     cp -r "${base_dir}/var/lib/aktin/import-scripts/"* "${build_dir}/import-scripts/"
     cp -r "${base_dir}/etc/aktin/aktin.properties" "${build_dir}/"
+    # dev mode properties
+    sed -e "s|^broker\.uris=.*|broker.uris=https://aktin-test-broker.klinikum.rwth-aachen.de/broker/|" \
+        -e "s|^broker\.intervals=.*|broker.intervals=PT1M|" \
+        -e "s|^local\.cn=.*|local.cn=DEV MODE DWH|" \
+        -e "s|^broker\.keys=.*|broker.keys=${API_KEY}|" \
+        "${base_dir}/etc/aktin/aktin.properties" > "${build_dir}/dev-aktin.properties"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
+    cp "${DIR_RESOURCES}/wildfly/entrypoint.sh" "${build_dir}/"
   }
   # get all openjdk, python and R dependencies of debian package
   get_package_dependencies() {
@@ -290,6 +304,8 @@ prepare_docker_compose() {
   create_prod_compose() {
     cp "${dev_compose}" "${prod_compose}"
     sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
+    sed -i '/- wildfly_deployments:\/opt\/wildfly\/standalone\/deployments/d' "${prod_compose}"
+    sed -i '/^[[:space:]]*wildfly_deployments:/,/^[[:space:]]*[^[:space:]]/d' "${prod_compose}"
   }
 
   create_dev_compose

@@ -1,6 +1,6 @@
 # --------------------------------------
 # WildFly Application Server for i2b2/AKTIN
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
 # Purpose:      Provides Java application server environment with i2b2 and AKTIN components
 #               along with Python and R data processing capabilities for the emergency
 #               department system. Includes German locale support and security configurations.
@@ -9,6 +9,7 @@
 FROM ubuntu:__UBUNTU_VERSION__
 
 ARG BUILD_TIME
+ARG DEV_MODE=false
 
 LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de" \
@@ -39,14 +40,17 @@ WORKDIR /opt/wildfly
 COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
+COPY ./dev-aktin.properties /usr/share/aktin/
+COPY ./entrypoint.sh /entrypoint.sh
 
-# Enable Wildfly to read aktin.properties
-RUN ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/ \
-   && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin
+# Set permissions and link configuration
+RUN chmod +x /entrypoint.sh \
+ && ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/ \
+ && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin /usr/share/aktin/
 
 EXPOSE 8080
 
 # Switch back to WildFly user for enhanced security
 USER wildfly
 
-CMD ["/opt/wildfly/bin/standalone.sh", "-b", "0.0.0.0"]
+ENTRYPOINT ["/entrypoint.sh"]

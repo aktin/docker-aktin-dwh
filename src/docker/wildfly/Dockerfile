@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y locales && \
     update-locale LANG=de_DE.UTF-8
 
 # Install essential packages and clean up APT cache
-RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ wget && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly
 

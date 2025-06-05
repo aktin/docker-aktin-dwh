@@ -46,7 +46,7 @@ services:
       database:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "http://localhost:8080/aktin/admin/rest/info/version", "|", "grep", "200" ]
+      test: [ "CMD-SHELL", "wget --server-response --spider http://127.0.0.1:9090/aktin/admin/rest/info/version 2>&1 | awk '/^  HTTP/{print $2}'" ]
       interval: 30s
       timeout: 10s
       retries: 10

@@ -1,8 +1,7 @@
 #!/bin/bash
 #--------------------------------------
 # Script Name:  build.sh
-# Version:      1.3
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
 # Purpose:      Automates the build process for AKTIN emergency department system containers. Downloads required artifacts, prepares container
 #               environments for PostgreSQL, WildFly and Apache2, and builds Docker images for deployment.
 #--------------------------------------
@@ -248,7 +247,7 @@ prepare_wildfly_docker() {
     cp -r "${base_dir}/etc/aktin/aktin.properties" "${build_dir}/"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
     cp "${DIR_RESOURCES}/wildfly/entrypoint.sh" "${build_dir}/"
-}
+  }
   # get all openjdk, python and R dependencies of debian package
   get_package_dependencies() {
    local pkg_name="$1"

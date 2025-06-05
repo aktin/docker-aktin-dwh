@@ -18,7 +18,7 @@ done
 readonly DIR_PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly API_KEY_FILE="${DIR_PROJECT}/dev-secrets/apikey.txt"
 if [ ! -f "$API_KEY_FILE" ]; then
-  echo "Error: Missing API key at $API_KEY_FILE"
+  echo "Error: Missing Dev API key at $API_KEY_FILE"
   exit 1
 fi
 API_KEY=$(<"$API_KEY_FILE")
@@ -303,7 +303,9 @@ prepare_docker_compose() {
 
   create_prod_compose() {
     cp "${dev_compose}" "${prod_compose}"
-    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d; /wildfly_deployments:/,/^[^ ]/d' "${prod_compose}"
+    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
+    sed -i '/- wildfly_deployments:\/opt\/wildfly\/standalone\/deployments/d' "${prod_compose}"
+    sed -i '/^[[:space:]]*wildfly_deployments:/,/^[[:space:]]*[^[:space:]]/d' "${prod_compose}"
   }
 
   create_dev_compose

@@ -9,6 +9,7 @@
 FROM ubuntu:__UBUNTU_VERSION__
 
 ARG BUILD_TIME
+ARG DEV_MODE=false
 
 LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de" \
@@ -31,7 +32,7 @@ RUN apt-get update && apt-get install -y locales && \
     update-locale LANG=de_DE.UTF-8
 
 # Install essential packages and clean up APT cache
-RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ wget && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly
 
@@ -39,14 +40,14 @@ WORKDIR /opt/wildfly
 COPY ./wildfly ./
 COPY ./import-scripts/* /var/lib/aktin/import-scripts/
 COPY ./aktin.properties /etc/aktin/
+COPY ./dev-aktin.properties /usr/share/aktin/
+COPY ./entrypoint.sh /entrypoint.sh
 COPY ./aktin.properties /usr/share/aktin/default-aktin.properties
 
-# Enable Wildfly to read aktin.properties
-RUN ln -sf /etc/aktin/aktin.properties ./standalone/configuration/ \
-   && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin
-
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Set permissions and link configuration
+RUN chmod +x /entrypoint.sh \
+ && ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/ \
+ && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin /usr/share/aktin/
 
 EXPOSE 8080
 

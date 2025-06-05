@@ -258,7 +258,7 @@ prepare_wildfly_docker() {
         -e "s|^broker\.intervals=.*|broker.intervals=PT1M|" \
         -e "s|^local\.cn=.*|local.cn=DEV MODE DWH|" \
         -e "s|^broker\.keys=.*|broker.keys=${API_KEY}|" \
-        "${base_dir}/etc/aktin/aktin.properties" > "${build_dir}/aktin-dev.properties"
+        "${base_dir}/etc/aktin/aktin.properties" > "${build_dir}/dev-aktin.properties"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
     cp "${DIR_RESOURCES}/wildfly/entrypoint.sh" "${build_dir}/"
   }

@@ -45,7 +45,7 @@ services:
     volumes:
       - aktin_config:/etc/aktin
       - aktin_data:/var/lib/aktin
-      - wildfly_dev_deployments:/opt/wildfly/standalone/dev
+      - wildfly_deployments:/opt/wildfly/standalone/deployments
     depends_on:
       database:
         condition: service_healthy
@@ -85,7 +85,7 @@ volumes:
     driver: local
   aktin_data:
     driver: local
-  wildfly_dev_deployments:
+  wildfly_deployments:
     driver: local
 
 networks:

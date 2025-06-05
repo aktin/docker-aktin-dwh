@@ -54,11 +54,17 @@ If you want to build the containers yourself or contribute to development:
 
 1. Clone this repository:
 ```bash
-git clone https://github.com/aktin/docker-aktin-dwh .git
+git clone https://github.com/aktin/docker-aktin-dwh.git
 cd docker-aktin-dwh 
 ```
 
-2. Run the build script:
+2. The build script expects an API key stored at `dev-secrets/apikey.txt`. Ensure a development API key is available:
+```bash
+mkdir -p dev-secrets
+echo "<your-api-key>" > dev-secrets/apikey.txt
+```
+
+3. Run the build script:
 ```bash
 ./src/build.sh
 ```
@@ -70,11 +76,13 @@ The build script accepts the following arguments:
 * `--use-main-branch`: Use current version from main branch instead of release versions
 * `--create-latest`: Create additional containers tagged as 'latest'
 
-3. Run the container locally using:
+4. Run the container locally using:
 ```bash
 cd build/
 docker compose -f compose.dev.yml up -d 
 ```
+
+The WildFly Docker container can run in development mode using the `DEV_MODE` environment variable. When set, the WildFly Docker will use a customized configuration file and mount a separate volume to `/opt/wildfly/standalone/deployments` to allow for isolated development deployments. `DEV_MODE=true` is set by default in the `compose.dev.yml`.
 
 ## Services
 

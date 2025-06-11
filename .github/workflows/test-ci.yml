@@ -7,6 +7,7 @@ on:
 
 jobs:
   build-deploy:
+    if: env.ACT == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository

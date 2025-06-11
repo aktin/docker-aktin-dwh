@@ -23,16 +23,19 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
 # Prevent interactive prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Set German Locale (required for running the AKTIN DWH)
+# Set German Locale (required for running the AKTIN DWH) with logging
 ENV LANG=de_DE.UTF-8
 ENV LANGUAGE=de_DE:en
 ENV LC_ALL=de_DE.UTF-8
-RUN apt-get update && apt-get install -y locales && \
+RUN apt-get update -qq && \
+    apt-get install -y -qq locales >> /var/log/setup.log 2>&1 && \
     locale-gen de_DE.UTF-8 && \
     update-locale LANG=de_DE.UTF-8
 
-# Install essential packages and clean up APT cache
-RUN apt-get update && apt-get install -y __UBUNTU_DEPENDENCIES__ wget && rm -rf /var/lib/apt/lists/*
+# Install essential packages with logging and clean up APT cache
+RUN apt-get update -qq && \
+    apt-get install -y -qq __UBUNTU_DEPENDENCIES__ wget >> /var/log/setup.log 2>&1 && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly
 

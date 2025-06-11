@@ -5,7 +5,7 @@ This repo uses [`act`](https://github.com/nektos/act) to run GitHub Actions work
 ## Prerequisites
 
 - Docker installed and running
-- `act` installed ([install guide](https://github.com/nektos/act#installation))
+- `act` installed ([install guide](https://nektosact.com/installation/index.html))
 - A `.secrets` file in the project root with the following format:
 
 ```

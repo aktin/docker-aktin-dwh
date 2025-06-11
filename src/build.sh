@@ -15,14 +15,6 @@ for cmd in curl unzip docker; do
   }
 done
 
-readonly DIR_PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-readonly API_KEY_FILE="${DIR_PROJECT}/dev-secrets/apikey.txt"
-if [ ! -f "$API_KEY_FILE" ]; then
-  echo "Error: Missing Dev API key at $API_KEY_FILE"
-  exit 1
-fi
-API_KEY=$(<"$API_KEY_FILE")
-
 readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
 
 CLEANUP=false
@@ -66,6 +58,12 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [ -z "${DEV_API_KEY:-}" ]; then
+  echo "Error: DEV_API_KEY environment variable required for development properties in the WildFly container" >&2
+  echo "Set DEV_API_KEY before running: DEV_API_KEY=your-dev-key $0 [options]" >&2
+  exit 1
+fi
 
 # Define relevant directories as absolute paths
 readonly DIR_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -257,7 +255,7 @@ prepare_wildfly_docker() {
     sed -e "s|^broker\.uris=.*|broker.uris=https://aktin-test-broker.klinikum.rwth-aachen.de/broker/|" \
         -e "s|^broker\.intervals=.*|broker.intervals=PT1M|" \
         -e "s|^local\.cn=.*|local.cn=DEV MODE DWH|" \
-        -e "s|^broker\.keys=.*|broker.keys=${API_KEY}|" \
+        -e "s|^broker\.keys=.*|broker.keys=${DEV_API_KEY}|" \
         "${base_dir}/etc/aktin/aktin.properties" > "${build_dir}/dev-aktin.properties"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
     cp "${DIR_RESOURCES}/wildfly/entrypoint.sh" "${build_dir}/"

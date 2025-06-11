@@ -58,15 +58,20 @@ git clone https://github.com/aktin/docker-aktin-dwh.git
 cd docker-aktin-dwh 
 ```
 
-2. The build script expects an API key stored at `dev-secrets/apikey.txt`. Ensure a development API key is available:
+2. Set the required `DEV_API_KEY` environment variable:
 ```bash
-mkdir -p dev-secrets
-echo "<your-api-key>" > dev-secrets/apikey.txt
+export DEV_API_KEY="<your-development-api-key>"
+```
+
+Alternatively, you can create a `.env` file in the project root:
+```bash
+echo "DEV_API_KEY=<your-development-api-key>" > .env
+source .env
 ```
 
 3. Run the build script:
 ```bash
-./src/build.sh
+DEV_API_KEY="<your-development-api-key>" ./src/build.sh
 ```
 
 The build script accepts the following arguments:
@@ -76,7 +81,7 @@ The build script accepts the following arguments:
 * `--use-main-branch`: Use current version from main branch instead of release versions
 * `--create-latest`: Create additional containers tagged as 'latest'
 
-4. Run the container locally using:
+4. Run the container locally after the build finished using:
 ```bash
 cd build/
 docker compose -f compose.dev.yml up -d 

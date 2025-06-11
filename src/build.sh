@@ -1,13 +1,27 @@
 #!/bin/bash
 #--------------------------------------
 # Script Name:  build.sh
-# Version:      1.3
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
 # Purpose:      Automates the build process for AKTIN emergency department system containers. Downloads required artifacts, prepares container
 #               environments for PostgreSQL, WildFly and Apache2, and builds Docker images for deployment.
 #--------------------------------------
 
 set -euo pipefail
+
+for cmd in curl unzip docker; do
+  command -v $cmd >/dev/null || {
+    echo "Error: $cmd is required but not installed." >&2
+    exit 1
+  }
+done
+
+readonly DIR_PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly API_KEY_FILE="${DIR_PROJECT}/dev-secrets/apikey.txt"
+if [ ! -f "$API_KEY_FILE" ]; then
+  echo "Error: Missing Dev API key at $API_KEY_FILE"
+  exit 1
+fi
+API_KEY=$(<"$API_KEY_FILE")
 
 readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
 
@@ -173,7 +187,10 @@ prepare_postgresql_docker(){
   }
   copy_package_sql_scripts "i2b2"
   copy_package_sql_scripts "dwh"
-  sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" "${DIR_DOCKER}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
+  sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
+      -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
+      -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
+      "${DIR_DOCKER}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
 }
 
@@ -204,7 +221,10 @@ prepare_apache2_docker() {
   }
   deploy_i2b2_webclient
   deploy_proxy_config
-  sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
+  sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" \
+      -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
+      -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
+      "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
 prepare_wildfly_docker() {
@@ -233,7 +253,14 @@ prepare_wildfly_docker() {
     echo "Copying AKTIN components..."
     cp -r "${base_dir}/var/lib/aktin/import-scripts/"* "${build_dir}/import-scripts/"
     cp -r "${base_dir}/etc/aktin/aktin.properties" "${build_dir}/"
+    # dev mode properties
+    sed -e "s|^broker\.uris=.*|broker.uris=https://aktin-test-broker.klinikum.rwth-aachen.de/broker/|" \
+        -e "s|^broker\.intervals=.*|broker.intervals=PT1M|" \
+        -e "s|^local\.cn=.*|local.cn=DEV MODE DWH|" \
+        -e "s|^broker\.keys=.*|broker.keys=${API_KEY}|" \
+        "${base_dir}/etc/aktin/aktin.properties" > "${build_dir}/dev-aktin.properties"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
+    cp "${DIR_RESOURCES}/wildfly/entrypoint.sh" "${build_dir}/"
   }
   # get all openjdk, python and R dependencies of debian package
   get_package_dependencies() {
@@ -253,7 +280,11 @@ prepare_wildfly_docker() {
   deploy_wildfly_base
   install_aktin_ds
   deploy_aktin_components
-  sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
+  sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" \
+      -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
+      -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
+      -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" \
+      "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
 prepare_docker_compose() {
@@ -273,6 +304,8 @@ prepare_docker_compose() {
   create_prod_compose() {
     cp "${dev_compose}" "${prod_compose}"
     sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
+    sed -i '/- wildfly_deployments:\/opt\/wildfly\/standalone\/deployments/d' "${prod_compose}"
+    sed -i '/^[[:space:]]*wildfly_deployments:/,/^[[:space:]]*[^[:space:]]/d' "${prod_compose}"
   }
 
   create_dev_compose
@@ -335,7 +368,7 @@ build_docker_images() {
   if [[ "${CLEANUP}" == true ]]; then
     echo "Cleaning up build artifacts..."
     rm -r "${DIR_BUILD}/"{database,wildfly,httpd}
-    rm -r "${DIR_DOWNLOADS}"
+    [[ "${DIR_DOWNLOADS}" != "/" && -n "${DIR_DOWNLOADS}" ]] && rm -rf "${DIR_DOWNLOADS}"
   fi
 }
 

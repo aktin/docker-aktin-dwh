@@ -1,21 +1,25 @@
 # --------------------------------------
 # Script Name:  compose.yml
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
 # Purpose:      Defines AKTIN emergency department system services:
 #               - PostgreSQL database with i2b2/AKTIN schema
 #               - WildFly application server
 #               - Apache2 reverse proxy with i2b2 webclient
 # --------------------------------------
 
-name: ${PROJECT_NAME:-build}
 services:
   database:
     image: __IMAGE_NAMESPACE__-database:__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_VERSION__
     hostname: database
+    restart: unless-stopped
     build:
       context: ./database
       args:
         BUILD_TIME: "${BUILD_TIME}"
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,6 +33,7 @@ services:
   wildfly:
     image: __IMAGE_NAMESPACE__-wildfly:__DWH_GITHUB_TAG__-docker__WILDFLY_CONTAINER_VERSION__
     hostname: wildfly
+    restart: unless-stopped
     build:
       context: ./wildfly
       args:
@@ -36,14 +41,16 @@ services:
     environment:
       DB_HOST: database
       DB_PORT: 5432
+      DEV_MODE: true
     volumes:
       - aktin_config:/etc/aktin
       - aktin_data:/var/lib/aktin
+      - wildfly_deployments:/opt/wildfly/standalone/deployments
     depends_on:
       database:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "http://localhost:8080/aktin/admin/rest/info/version", "|", "grep", "200" ]
+      test: [ "CMD-SHELL", "wget --server-response --spider http://127.0.0.1:9090/aktin/admin/rest/info/version 2>&1 | awk '/^  HTTP/{print $2}'" ]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -53,6 +60,7 @@ services:
   httpd:
     image: __IMAGE_NAMESPACE__-httpd:__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_VERSION__
     hostname: httpd
+    restart: unless-stopped
     build:
       context: ./httpd
       args:
@@ -77,7 +85,13 @@ volumes:
     driver: local
   aktin_data:
     driver: local
+  wildfly_deployments:
+    driver: local
 
 networks:
   aktin-network:
     driver: bridge
+
+secrets:
+  postgres_password:
+    file: ./secret.txt

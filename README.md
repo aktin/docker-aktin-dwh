@@ -12,35 +12,59 @@ A containerized deployment of the AKTIN emergency department system using Docker
 ```bash
 curl -LO https://github.com/aktin/docker-aktin-dwh/releases/latest/download/compose.yml
 ```
-
-2. Start the containers:
+2. In the folder of the `compose.yml` script create a secret file with a strong password:
+```bash
+echo 'mysecretpassword' > secret.txt
+```
+3. Start the containers:
 ```
 docker compose up -d
 ```
-The system will be available at `http://localhost` once all containers are started.
+The system will be available at `http://localhost` once all containers have started. For [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/), the property files must be copied manually into the `aktin_config` folder. See [this issue]([https://github.com/aktin/docker-aktin-dwh/issues/6](https://github.com/aktin/docker-aktin-dwh/issues/10)) for details.
 
-To run multiple AKTIN instances on the same server, configure unique ports and project names for each instance by setting the appropriate values to `PROJECT_NAME` and `HTTP_PORT`:
+
+### Running Multiple AKTIN Instances on the Same Server
+
+To run multiple AKTIN instances on the same server, place instances of `compose.yml` in separate folders and assign unique ports per instance (`HTTP_PORT`). Docker Compose will automatically use the folder name as the project name, isolating container names, networks, and volumes. You can configure the individual instances using `.env` files:
+
+`/opt/docker-deploy/aktin1/.env1`:
+```bash
+HTTP_PORT=80
+```
+
+`/opt/docker-deploy/aktin2/.env2`:
+```bash
+HTTP_PORT=81
+```
+
+Start each instance with:
 
 ```bash
 # Instance 1
-PROJECT_NAME=aktin1 HTTP_PORT=80 docker compose up -d
+cd /opt/docker-deploy/aktin1
+docker compose up -d
 
 # Instance 2
-PROJECT_NAME=aktin2 HTTP_PORT=81 docker compose up -d
+cd /opt/docker-deploy/aktin2
+docker compose up -d
 ```
-
-Each instance will be isolated with its own network, volumes, and ports.
 
 ## For Developers
 If you want to build the containers yourself or contribute to development:
 
 1. Clone this repository:
 ```bash
-git clone https://github.com/aktin/docker-aktin-dwh .git
+git clone https://github.com/aktin/docker-aktin-dwh.git
 cd docker-aktin-dwh 
 ```
 
-2. Run the build script:
+2. The build script expects an API key stored at `dev-secrets/apikey.txt`. Ensure a development API key is available:
+```bash
+mkdir -p dev-secrets
+echo "<your-api-key>" > dev-secrets/apikey.txt
+```
+
+3. Run the build script:
 ```bash
 ./src/build.sh
 ```
@@ -52,11 +76,13 @@ The build script accepts the following arguments:
 * `--use-main-branch`: Use current version from main branch instead of release versions
 * `--create-latest`: Create additional containers tagged as 'latest'
 
-3. Run the container locally using:
+4. Run the container locally using:
 ```bash
 cd build/
 docker compose -f compose.dev.yml up -d 
 ```
+
+The WildFly Docker container can run in development mode using the `DEV_MODE` environment variable. When set, the WildFly Docker will use a customized configuration file and mount a separate volume to `/opt/wildfly/standalone/deployments` to allow for isolated development deployments. `DEV_MODE=true` is set by default in the `compose.dev.yml`.
 
 ## Services
 
@@ -77,9 +103,8 @@ docker compose -f compose.dev.yml up -d
 
 * Image: `notaufnahme-dwh-httpd`
 * Provides i2b2 web interface and reverse proxy configuration
-* Default port: 80 (configurable via HTTP_PORT environment variable)
+* Default port: **80** (configurable via `HTTP_PORT` environment variable)
 
 ## Environment Variables
 
-* `PROJECT_NAME`: Sets the project name for the Docker Compose deployment (default: build)
 * `HTTP_PORT`: Sets the exposed port for the Apache web server (default: 80)

@@ -24,6 +24,12 @@ jobs:
           path: src/downloads/
           key: downloads--${{ env.CACHE }}
 
+      - name: Inject Dummy API Key
+        run: |
+          mkdir -p dev-secrets
+          echo "DUMMY-KEY" > dev-secrets/apikey.txt
+        working-directory: src
+
       - name: Build Dockerfiles
         run: ./build.sh --create-latest
         working-directory: src

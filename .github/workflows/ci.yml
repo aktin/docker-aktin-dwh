@@ -23,7 +23,7 @@ jobs:
           key: downloads--${{ env.CACHE }}
 
       - name: Build Dockerfiles
-        run: build.sh --create-latest
+        run: ./build.sh --create-latest
         working-directory: src
 
       - name: Login to GitHub Docker Registry

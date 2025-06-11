@@ -1,0 +1,66 @@
+name: Test CI/CD Docker
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+**
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install Maven
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y maven
+
+      - name: Generate Cache Name
+        run: echo "CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')" >> $GITHUB_ENV
+        working-directory: src/docker
+
+      - name: Retrieve Cached Downloads
+        uses: actions/cache@v4
+        with:
+          path: src/downloads/
+          key: downloads--${{ env.CACHE }}-test
+
+      - name: Build Dockerfiles
+        env:
+          DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
+        run: ./build.sh --create-latest
+        working-directory: src
+
+      - name: Login to GitHub Docker Registry
+        run: |
+          echo "=== LOGIN SIMULATION ==="
+          echo "Would login to: ghcr.io as ${{ github.actor }}"
+
+      - name: Deploy Dockerfiles
+        run: |
+          for image in database wildfly httpd; do
+            echo "Images matching *$image* (should be 2):"
+            docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -i "$image" || echo "  No $image images found"
+          done
+
+      - name: Release
+        run: |
+          echo "=== GITHUB RELEASE SIMULATION ==="
+          if [ -f "src/build/compose.yml" ]; then
+            echo "compose.yml exists ($(wc -l < src/build/compose.yml) lines)"
+          else
+            echo "compose.yml not found"
+          fi
+          if [ -f ".github/workflows/release_notes.md" ]; then
+            echo "release_notes.md exists ($(wc -l < .github/workflows/release_notes.md) lines)"
+          else
+            echo "release_notes.md not found"
+          fi

@@ -59,8 +59,8 @@ jobs:
           else
             echo "compose.yml not found"
           fi
-          if [ -f ".github/workflows/release_notes.md" ]; then
-            echo "release_notes.md exists ($(wc -l < .github/workflows/release_notes.md) lines)"
+          if [ -f ".github/release_notes.md" ]; then
+            echo "release_notes.md exists ($(wc -l < .github/release_notes.md) lines)"
           else
             echo "release_notes.md not found"
           fi

@@ -58,6 +58,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: src/build/compose.yml
-          body_path: .github/workflows/release_notes.md
+          body_path: .github/release_notes.md
           fail_on_unmatched_files: true
           make_latest: true

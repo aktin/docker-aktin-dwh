@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-for cmd in curl unzip docker; do
+for cmd in curl unzip docker java mvn; do
   command -v $cmd >/dev/null || {
     echo "Error: $cmd is required but not installed." >&2
     exit 1

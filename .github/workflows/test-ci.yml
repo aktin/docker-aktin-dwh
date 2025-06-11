@@ -1,9 +1,7 @@
-name: CI/CD Docker
+name: Test CI/CD Docker
 
 on:
   push:
-    branches:
-      - main
     tags:
       - v[0-9]+.[0-9]+**
 
@@ -33,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: src/downloads/
-          key: downloads--${{ env.CACHE }}
+          key: downloads--${{ env.CACHE }}-test
 
       - name: Build Dockerfiles
         env:
@@ -42,22 +40,27 @@ jobs:
         working-directory: src
 
       - name: Login to GitHub Docker Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== LOGIN SIMULATION ==="
+          echo "Would login to: ghcr.io as ${{ github.actor }}"
 
       - name: Deploy Dockerfiles
         run: |
-          docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-database
-          docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-wildfly
-          docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-httpd
+          for image in database wildfly httpd; do
+            echo "Images matching *$image* (should be 2):"
+            docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -i "$image" || echo "  No $image images found"
+          done
 
       - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: src/build/compose.yml
-          body_path: .github/release_notes.md
-          fail_on_unmatched_files: true
-          make_latest: true
+        run: |
+          echo "=== GITHUB RELEASE SIMULATION ==="
+          if [ -f "src/build/compose.yml" ]; then
+            echo "compose.yml exists ($(wc -l < src/build/compose.yml) lines)"
+          else
+            echo "compose.yml not found"
+          fi
+          if [ -f ".github/release_notes.md" ]; then
+            echo "release_notes.md exists ($(wc -l < .github/release_notes.md) lines)"
+          else
+            echo "release_notes.md not found"
+          fi

@@ -27,12 +27,12 @@ The system will be available at `http://localhost` once all containers have star
 
 To run multiple AKTIN instances on the same server, place instances of `compose.yml` in separate folders and assign unique ports per instance (`HTTP_PORT`). Docker Compose will automatically use the folder name as the project name, isolating container names, networks, and volumes. You can configure the individual instances using `.env` files:
 
-`/opt/docker-deploy/aktin1/.env1`:
+`/opt/docker-deploy/aktin1/.env`:
 ```bash
 HTTP_PORT=80
 ```
 
-`/opt/docker-deploy/aktin2/.env2`:
+`/opt/docker-deploy/aktin2/.env`:
 ```bash
 HTTP_PORT=81
 ```

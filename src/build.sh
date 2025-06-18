@@ -301,7 +301,7 @@ prepare_docker_compose() {
 
   create_prod_compose() {
     cp "${dev_compose}" "${prod_compose}"
-    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
+    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d; /DEV_MODE:/d' "${prod_compose}"
     sed -i '/- wildfly_deployments:\/opt\/wildfly\/standalone\/deployments/d' "${prod_compose}"
     sed -i '/^[[:space:]]*wildfly_deployments:/,/^[[:space:]]*[^[:space:]]/d' "${prod_compose}"
   }

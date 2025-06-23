@@ -35,9 +35,9 @@ services:
       args:
         BUILD_TIME: "${BUILD_TIME}"
     environment:
-      DB_HOST: database
-      DB_PORT: 5432
-      DEV_MODE: true
+      DB_HOST: ${DB_HOST:-database}
+      DB_PORT: ${DB_PORT:-5432}
+      DEV_MODE: ${DEV_MODE:-false}
     volumes:
       - aktin_config:/etc/aktin
       - aktin_data:/var/lib/aktin

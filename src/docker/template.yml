@@ -26,7 +26,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 10
-      start_period: 180s
+      start_period: 120s
   wildfly:
     image: __IMAGE_NAMESPACE__-wildfly:__DWH_GITHUB_TAG__-docker__WILDFLY_CONTAINER_VERSION__
     restart: unless-stopped
@@ -63,7 +63,7 @@ services:
     depends_on:
       - wildfly
     healthcheck:
-      test: [ "CMD", "apache2ctl", "configtest" ]
+      test: [ "CMD-SHELL", "apache2ctl configtest" ]
       interval: 30s
       timeout: 10s
       retries: 10

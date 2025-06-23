@@ -9,7 +9,7 @@
 
 services:
   database:
-    image: __IMAGE_NAMESPACE__-database:__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_REVISION__
+    image: __IMAGE_NAMESPACE__-database:${DATABASE_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_REVISION__}
     restart: unless-stopped
     build:
       context: ./database
@@ -28,7 +28,7 @@ services:
       retries: 10
       start_period: 120s
   wildfly:
-    image: __IMAGE_NAMESPACE__-wildfly:__DWH_GITHUB_TAG__-docker__WILDFLY_CONTAINER_REVISION__
+    image: __IMAGE_NAMESPACE__-wildfly:${WILDFLY_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__WILDFLY_CONTAINER_REVISION__}
     restart: unless-stopped
     build:
       context: ./wildfly
@@ -52,7 +52,7 @@ services:
       retries: 10
       start_period: 120s
   httpd:
-    image: __IMAGE_NAMESPACE__-httpd:__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_REVISION__
+    image: __IMAGE_NAMESPACE__-httpd:${HTTPD_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_REVISION__}
     restart: unless-stopped
     build:
       context: ./httpd

@@ -80,13 +80,9 @@ services:
 
 volumes:
   pg_data:
-    driver: local
   aktin_config:
-    driver: local
   aktin_data:
-    driver: local
   wildfly_deployments:
-    driver: local
 
 networks:
   aktin-network:

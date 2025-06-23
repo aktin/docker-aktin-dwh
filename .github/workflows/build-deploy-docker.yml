@@ -4,10 +4,12 @@ on:
   workflow_call:
     inputs:
       cache_key:
+        description: "Cache key for retrieving pre-downloaded dependencies"
         required: true
         type: string
     secrets:
       DEV_API_KEY:
+        description: "API key used for Wildfly DEV_MODE"
         required: true
 
 jobs:
@@ -52,3 +54,9 @@ jobs:
           docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-database
           docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-wildfly
           docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-httpd
+
+      - name: Upload Compose File
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-yml
+          path: src/build/compose.yml

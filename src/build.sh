@@ -221,7 +221,7 @@ prepare_apache2_docker() {
   deploy_proxy_config
   sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
-      -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
+      -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
       "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
@@ -295,7 +295,7 @@ prepare_docker_compose() {
         -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
         -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
         -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
-        -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
+        -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
         "${template}" > "${dev_compose}"
   }
 
@@ -352,7 +352,7 @@ build_docker_images() {
   if [ "${CREATE_LATEST}" = true ]; then
     echo "Creating latest tagged images..."
     local services=("database" "wildfly" "httpd")
-    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_REVISION}" "${HTTPD_CONTAINER_VERSION}")
+    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_REVISION}" "${HTTPD_CONTAINER_REVISION}")
     for i in "${!services[@]}"; do
       local service="${services[$i]}"
       local version="${versions[$i]}"

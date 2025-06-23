@@ -1,0 +1,50 @@
+name: Deploy Base Container Security Updates
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+
+jobs:
+  check-postgres:
+    uses: ./.github/workflows/check-container-update.yml
+    with:
+      container: postgres
+      version_key: POSTGRESQL_VERSION
+
+  check-ubuntu:
+    uses: ./.github/workflows/check-container-update.yml
+    with:
+      container: ubuntu
+      version_key: UBUNTU_VERSION
+
+  check-php:
+    uses: ./.github/workflows/check-container-update.yml
+    with:
+      container: php
+      version_key: APACHE_VERSION
+
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      cache_key: ${{ steps.cache.outputs.cache_key }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate Cache Name
+        run: |
+          CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
+          echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
+        working-directory: src/docker
+
+  build-and-deploy:
+    needs: [ check-postgres, check-ubuntu, check-php, prepare ]
+    if: |
+      needs.check-postgres.outputs.update == 'true' ||
+      needs.check-ubuntu.outputs.update == 'true' ||
+      needs.check-php.outputs.update == 'true'
+    uses: ./.github/workflows/build-deploy-docker.yml
+    with:
+      cache_key: ${{ needs.prepare-cache.outputs.cache_key }}
+    secrets:
+      DEV_API_KEY: ${{ secrets.DEV_API_KEY }}

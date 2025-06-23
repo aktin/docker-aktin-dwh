@@ -6,21 +6,34 @@ on:
       - v[0-9]+.[0-9]+**
 
 jobs:
-  release:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      cache_key: ${{ steps.cache.outputs.cache_key }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Generate Cache Name
-        run: echo "CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')" >> $GITHUB_ENV
+        run: |
+          CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
+          echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
         working-directory: src/docker
 
-      - uses: ./.github/workflows/build-deploy-docker.yml
-        with:
-          cache_key: downloads--${{ env.CACHE }}
-        secrets:
-          DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
+  build-and-deploy:
+    needs: prepare
+    uses: ./.github/workflows/build-deploy-docker.yml
+    with:
+      cache_key: ${{ needs.prepare.outputs.cache_key }}
+    secrets:
+      DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
+
+  release:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Release
         uses: softprops/action-gh-release@v2

@@ -280,7 +280,7 @@ prepare_wildfly_docker() {
   deploy_aktin_components
   sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
-      -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
+      -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
       -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" \
       "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
@@ -294,7 +294,7 @@ prepare_docker_compose() {
     sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" \
         -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
         -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
-        -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
+        -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
         -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
         "${template}" > "${dev_compose}"
   }
@@ -352,7 +352,7 @@ build_docker_images() {
   if [ "${CREATE_LATEST}" = true ]; then
     echo "Creating latest tagged images..."
     local services=("database" "wildfly" "httpd")
-    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_VERSION}" "${HTTPD_CONTAINER_VERSION}")
+    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_REVISION}" "${HTTPD_CONTAINER_VERSION}")
     for i in "${!services[@]}"; do
       local service="${services[$i]}"
       local version="${versions[$i]}"

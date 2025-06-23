@@ -9,8 +9,7 @@
 
 services:
   database:
-    image: __IMAGE_NAMESPACE__-database:__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_VERSION__
-    hostname: database
+    image: __IMAGE_NAMESPACE__-database:${DATABASE_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_REVISION__}
     restart: unless-stopped
     build:
       context: ./database
@@ -27,21 +26,18 @@ services:
       interval: 30s
       timeout: 10s
       retries: 10
-      start_period: 180s
-    networks:
-      - aktin-network
+      start_period: 120s
   wildfly:
-    image: __IMAGE_NAMESPACE__-wildfly:__DWH_GITHUB_TAG__-docker__WILDFLY_CONTAINER_VERSION__
-    hostname: wildfly
+    image: __IMAGE_NAMESPACE__-wildfly:${WILDFLY_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__WILDFLY_CONTAINER_REVISION__}
     restart: unless-stopped
     build:
       context: ./wildfly
       args:
         BUILD_TIME: "${BUILD_TIME}"
     environment:
-      DB_HOST: database
-      DB_PORT: 5432
-      DEV_MODE: true
+      DB_HOST: ${DB_HOST:-database}
+      DB_PORT: ${DB_PORT:-5432}
+      DEV_MODE: ${DEV_MODE:-true}
     volumes:
       - aktin_config:/etc/aktin
       - aktin_data:/var/lib/aktin
@@ -55,11 +51,8 @@ services:
       timeout: 10s
       retries: 10
       start_period: 120s
-    networks:
-      - aktin-network
   httpd:
-    image: __IMAGE_NAMESPACE__-httpd:__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_VERSION__
-    hostname: httpd
+    image: __IMAGE_NAMESPACE__-httpd:${HTTPD_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_REVISION__}
     restart: unless-stopped
     build:
       context: ./httpd
@@ -70,27 +63,17 @@ services:
     depends_on:
       - wildfly
     healthcheck:
-      test: [ "CMD", "apache2ctl", "configtest" ]
+      test: [ "CMD-SHELL", "apache2ctl configtest" ]
       interval: 30s
       timeout: 10s
       retries: 10
       start_period: 120s
-    networks:
-      - aktin-network
 
 volumes:
   pg_data:
-    driver: local
   aktin_config:
-    driver: local
   aktin_data:
-    driver: local
   wildfly_deployments:
-    driver: local
-
-networks:
-  aktin-network:
-    driver: bridge
 
 secrets:
   postgres_password:

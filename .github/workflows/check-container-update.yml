@@ -1,0 +1,77 @@
+name: Check Container Update
+
+on:
+  workflow_call:
+    inputs:
+      container:
+        description: "The container image name on Docker Hub"
+        required: true
+        type: string
+      version_key:
+        description: "The variable name to extract the version from 'src/resources/versions'"
+        required: true
+        type: string
+      architecture:
+        description: "The image architecture to check (default: 'amd64')"
+        required: false
+        type: string
+        default: 'amd64'
+    outputs:
+      update:
+        description: "True if container has a new digest"
+        value: ${{ jobs.check.outputs.update }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      update: ${{ steps.set-output.outputs.update }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read version from file
+        id: read-version
+        run: |
+          VERSION_FILE="src/resources/versions"
+          VERSION=$(grep "^${{ inputs.version_key }}=" "$VERSION_FILE" | cut -d= -f2)
+          if [ -z "$VERSION" ]; then
+            echo "Version not found for key: ${{ inputs.version_key }}"
+            exit 1
+          fi
+          echo "CONTAINER=${{ inputs.container }}" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "ARCH=${{ inputs.architecture }}" >> $GITHUB_ENV
+          echo "DIGEST_FILE=.github/workflows/.digest-${{ inputs.container }}" >> $GITHUB_ENV
+
+      - name: Fetch current digest
+        id: fetch-digest
+        run: |
+          DIGEST=$(curl -s "https://registry.hub.docker.com/v2/repositories/library/$CONTAINER/tags/$VERSION" \
+            | jq -r ".images[] | select(.architecture==\"$ARCH\") | .digest" | head -n 1)
+          echo "$DIGEST" > current_digest.txt
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Compare digests
+        id: compare-digest
+        run: |
+          CLEAN_CURRENT=$(tr -d '\n\r' < current_digest.txt)
+          CLEAN_PREVIOUS=$([ -f "$DIGEST_FILE" ] && tr -d '\n\r' < "$DIGEST_FILE" || echo "" )
+          if [ "$CLEAN_CURRENT" != "$CLEAN_PREVIOUS" ]; then
+            echo "update=true" >> $GITHUB_OUTPUT
+            echo "CHANGED=true" >> $GITHUB_ENV
+            echo "$CLEAN_CURRENT" > "$DIGEST_FILE"
+          else
+            echo "update=false" >> $GITHUB_OUTPUT
+            echo "CHANGED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Commit updated digest
+        if: env.CHANGED == 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add "$DIGEST_FILE"
+          git commit -m "Update digest for $CONTAINER:$VERSION"
+          git push

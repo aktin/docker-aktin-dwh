@@ -1,0 +1,31 @@
+name: Create new Docker Release
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+**
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate Cache Name
+        run: echo "CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')" >> $GITHUB_ENV
+        working-directory: src/docker
+
+      - uses: ./.github/workflows/build-deploy-docker.yml
+        with:
+          cache_key: downloads--${{ env.CACHE }}
+        secrets:
+          DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src/build/compose.yml
+          body_path: .github/release_notes.md
+          fail_on_unmatched_files: true
+          make_latest: true

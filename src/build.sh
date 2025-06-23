@@ -187,7 +187,7 @@ prepare_postgresql_docker(){
   copy_package_sql_scripts "dwh"
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
-      -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
+      -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
       "${DIR_DOCKER}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
 }
@@ -293,7 +293,7 @@ prepare_docker_compose() {
   create_dev_compose() {
     sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" \
         -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
-        -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
+        -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
         -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
         -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
         "${template}" > "${dev_compose}"
@@ -352,7 +352,7 @@ build_docker_images() {
   if [ "${CREATE_LATEST}" = true ]; then
     echo "Creating latest tagged images..."
     local services=("database" "wildfly" "httpd")
-    local versions=("${DATABASE_CONTAINER_VERSION}" "${WILDFLY_CONTAINER_VERSION}" "${HTTPD_CONTAINER_VERSION}")
+    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_VERSION}" "${HTTPD_CONTAINER_VERSION}")
     for i in "${!services[@]}"; do
       local service="${services[$i]}"
       local version="${versions[$i]}"

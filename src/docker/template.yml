@@ -9,7 +9,7 @@
 
 services:
   database:
-    image: __IMAGE_NAMESPACE__-database:__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_VERSION__
+    image: __IMAGE_NAMESPACE__-database:__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_REVISION__
     restart: unless-stopped
     build:
       context: ./database

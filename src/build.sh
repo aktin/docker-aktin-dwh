@@ -318,11 +318,11 @@ cleanup_old_docker_images() {
   if [ -n "$images" ]; then
     # Remove any containers using these images
     for image in $images; do
-      if containers=$(docker ps -a -q --filter "ancestor=${image}"); then
-        if [ -n "$containers" ]; then
-          echo "Removing containers for ${image}"
-          docker rm -f $containers
-        fi
+      # Find containers based on the image
+      containers=$(docker ps -a -q --filter "ancestor=${image}")
+      if [ -n "$containers" ]; then
+        echo "Stopping and removing containers for ${image}"
+        docker rm -f $containers
       fi
     done
     # Remove all matching images
@@ -331,8 +331,6 @@ cleanup_old_docker_images() {
   else
     echo "No images found to cleanup"
   fi
-  # Remove dangling images
-  docker image prune -f
 }
 
 build_docker_images() {

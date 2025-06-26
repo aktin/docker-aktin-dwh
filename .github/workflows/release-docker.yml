@@ -11,8 +11,12 @@ jobs:
     outputs:
       cache_key: ${{ steps.cache.outputs.cache_key }}
     steps:
-      - name: Checkout Repository
+      - name: Sparse Checkout of Versions File
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            src/resources/versions
+          sparse-checkout-cone-mode: false
 
       - name: Generate Cache Name
         run: |

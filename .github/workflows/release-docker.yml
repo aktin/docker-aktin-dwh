@@ -22,7 +22,7 @@ jobs:
         run: |
           CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
           echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
-        working-directory: src/docker
+        working-directory: src/resources
 
   build-and-deploy:
     needs: prepare

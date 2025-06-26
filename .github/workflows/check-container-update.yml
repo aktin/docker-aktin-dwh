@@ -48,8 +48,16 @@ jobs:
       - name: Fetch current digest
         id: fetch-digest
         run: |
-          DIGEST=$(curl -s "https://registry.hub.docker.com/v2/repositories/library/$CONTAINER/tags/$VERSION" \
-            | jq -r ".images[] | select(.architecture==\"$ARCH\") | .digest" | head -n 1)
+          RESPONSE=$(curl -sf "https://registry.hub.docker.com/v2/repositories/library/$CONTAINER/tags/$VERSION")
+          if [ $? -ne 0 ]; then
+            echo "Failed to fetch image data from Docker Hub"
+            exit 1
+          fi
+          DIGEST=$(echo "$RESPONSE" | jq -r ".images[] | select(.architecture==\"$ARCH\") | .digest" | head -n 1)
+          if [ -z "$DIGEST" ] || [ "$DIGEST" = "null" ]; then
+            echo "Digest not found for $CONTAINER:$VERSION with architecture $ARCH"
+            exit 1
+          fi
           echo "$DIGEST" > current_digest.txt
           echo "digest=$DIGEST" >> $GITHUB_OUTPUT
 

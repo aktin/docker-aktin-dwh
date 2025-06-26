@@ -55,7 +55,7 @@ jobs:
           docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-wildfly
           docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-httpd
 
-      - name: Upload Compose File
+      - name: Upload Compose File Artifact
         uses: actions/upload-artifact@v4
         with:
           name: compose-yml

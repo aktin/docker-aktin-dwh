@@ -19,6 +19,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Generate Cache Name
+        id: cache
         run: |
           CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
           echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
@@ -36,8 +37,12 @@ jobs:
     needs: build-and-deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Sparse Checkout of Release Notes File
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/release_notes.md
+          sparse-checkout-cone-mode: false
 
       - name: Download Compose File
         uses: actions/download-artifact@v4

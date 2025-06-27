@@ -36,6 +36,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Generate Cache Name
+        id: cache
         run: |
           CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
           echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
@@ -49,6 +50,6 @@ jobs:
       needs.check-php.outputs.update == 'true'
     uses: ./.github/workflows/build-deploy-docker.yml
     with:
-      cache_key: ${{ needs.prepare-cache.outputs.cache_key }}
+      cache_key: ${{ needs.prepare.outputs.cache_key }}
     secrets:
       DEV_API_KEY: ${{ secrets.DEV_API_KEY }}

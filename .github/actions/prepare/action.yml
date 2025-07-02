@@ -1,0 +1,19 @@
+name: Prepare Cache Key
+
+runs:
+  using: "composite"
+  steps:
+    - name: Sparse Checkout of Versions File
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          src/resources/versions
+        sparse-checkout-cone-mode: false
+
+    - name: Generate Cache Name
+      id: cache
+      run: |
+        CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
+        echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
+      shell: bash
+      working-directory: src/resources

@@ -27,7 +27,7 @@ jobs:
 
   build-and-deploy:
     needs: prepare
-    uses: ./.github/workflows/build-deploy-docker.yml
+    uses: ./.github/workflows/reusable/build-deploy-docker.yml
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}
     secrets:

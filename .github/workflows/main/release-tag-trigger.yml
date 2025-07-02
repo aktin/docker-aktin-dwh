@@ -7,23 +7,7 @@ on:
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      cache_key: ${{ steps.cache.outputs.cache_key }}
-    steps:
-      - name: Sparse Checkout of Versions File
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            src/resources/versions
-          sparse-checkout-cone-mode: false
-
-      - name: Generate Cache Name
-        id: cache
-        run: |
-          CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
-          echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
-        working-directory: src/resources
+    uses: ./.github/workflows/reusable/prepare-cache.yml
 
   build-and-deploy:
     needs: prepare

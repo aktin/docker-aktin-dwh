@@ -1,0 +1,29 @@
+name: Prepare Downloads Cache Key
+
+on:
+  workflow_call:
+    outputs:
+      cache_key:
+        description: "The generated cache key"
+        value: ${{ jobs.prepare-cache-key.outputs.cache_key }}
+
+jobs:
+  prepare-cache:
+    runs-on: ubuntu-latest
+    outputs:
+      cache_key: ${{ steps.cache.outputs.cache_key }}
+    steps:
+      - name: Sparse Checkout of Versions File
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            src/resources/versions
+          sparse-checkout-cone-mode: false
+
+      - name: Generate Cache Name
+        id: cache
+        run: |
+          CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
+          echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
+        shell: bash
+        working-directory: src/resources

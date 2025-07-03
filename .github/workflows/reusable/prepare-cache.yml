@@ -5,7 +5,7 @@ on:
     outputs:
       cache_key:
         description: "The generated cache key"
-        value: ${{ jobs.prepare-cache-key.outputs.cache_key }}
+        value: ${{ jobs.prepare-cache.outputs.cache_key }}
 
 jobs:
   prepare-cache:
@@ -25,5 +25,4 @@ jobs:
         run: |
           CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
           echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
-        shell: bash
         working-directory: src/resources

@@ -111,5 +111,8 @@ The WildFly Docker container can run in development mode using the `DEV_MODE` en
 * Default port: **80** (configurable via `HTTP_PORT` environment variable)
 
 ## Environment Variables
-
-* `HTTP_PORT`: Sets the exposed port for the Apache web server (default: 80)
+These variables can be defined in a `.env` file and are used throughout `compose.yml` to configure the system:
+- `HTTP_PORT`: Exposed port for the Apache HTTPD server (default: `80`)
+- `DB_HOST`: Hostname of the database container (default: `database`)
+- `DB_PORT`: Port to reach PostgreSQL (default: `5432`)
+- `DEV_MODE`: Enables WildFly dev mode (default: `false`)

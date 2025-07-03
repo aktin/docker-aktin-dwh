@@ -187,7 +187,7 @@ prepare_postgresql_docker(){
   copy_package_sql_scripts "dwh"
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
-      -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
+      -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
       "${DIR_DOCKER}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
 }
@@ -221,7 +221,7 @@ prepare_apache2_docker() {
   deploy_proxy_config
   sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
-      -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
+      -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
       "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
@@ -280,7 +280,7 @@ prepare_wildfly_docker() {
   deploy_aktin_components
   sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
-      -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
+      -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
       -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" \
       "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
@@ -293,17 +293,18 @@ prepare_docker_compose() {
   create_dev_compose() {
     sed -e "s|__IMAGE_NAMESPACE__|${IMAGE_NAMESPACE}|g" \
         -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
-        -e "s|__DATABASE_CONTAINER_VERSION__|${DATABASE_CONTAINER_VERSION}|g" \
-        -e "s|__WILDFLY_CONTAINER_VERSION__|${WILDFLY_CONTAINER_VERSION}|g" \
-        -e "s|__HTTPD_CONTAINER_VERSION__|${HTTPD_CONTAINER_VERSION}|g" \
+        -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
+        -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
+        -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
         "${template}" > "${dev_compose}"
   }
 
   create_prod_compose() {
     cp "${dev_compose}" "${prod_compose}"
-    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d; /DEV_MODE:/d' "${prod_compose}"
+    sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
+    sed -i 's/DEV_MODE: \${DEV_MODE:-true}/DEV_MODE: ${DEV_MODE:-false}/' "${prod_compose}"
     sed -i '/- wildfly_deployments:\/opt\/wildfly\/standalone\/deployments/d' "${prod_compose}"
-    sed -i '/^[[:space:]]*wildfly_deployments:/,/^[[:space:]]*[^[:space:]]/d' "${prod_compose}"
+    sed -i '/wildfly_deployments:/d' "${prod_compose}"
   }
 
   create_dev_compose
@@ -317,11 +318,11 @@ cleanup_old_docker_images() {
   if [ -n "$images" ]; then
     # Remove any containers using these images
     for image in $images; do
-      if containers=$(docker ps -a -q --filter "ancestor=${image}"); then
-        if [ -n "$containers" ]; then
-          echo "Removing containers for ${image}"
-          docker rm -f $containers
-        fi
+      # Find containers based on the image
+      containers=$(docker ps -a -q --filter "ancestor=${image}")
+      if [ -n "$containers" ]; then
+        echo "Stopping and removing containers for ${image}"
+        docker rm -f $containers
       fi
     done
     # Remove all matching images
@@ -330,8 +331,6 @@ cleanup_old_docker_images() {
   else
     echo "No images found to cleanup"
   fi
-  # Remove dangling images
-  docker image prune -f
 }
 
 build_docker_images() {
@@ -352,7 +351,7 @@ build_docker_images() {
   if [ "${CREATE_LATEST}" = true ]; then
     echo "Creating latest tagged images..."
     local services=("database" "wildfly" "httpd")
-    local versions=("${DATABASE_CONTAINER_VERSION}" "${WILDFLY_CONTAINER_VERSION}" "${HTTPD_CONTAINER_VERSION}")
+    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_REVISION}" "${HTTPD_CONTAINER_REVISION}")
     for i in "${!services[@]}"; do
       local service="${services[$i]}"
       local version="${versions[$i]}"

@@ -1,9 +1,16 @@
-name: CI/CD Docker
+name: Build and Deploy Docker Images
 
 on:
-  push:
-    tags:
-      - v[0-9]+.[0-9]+**
+  workflow_call:
+    inputs:
+      cache_key:
+        description: "Cache key for retrieving pre-downloaded dependencies"
+        required: true
+        type: string
+    secrets:
+      DEV_API_KEY:
+        description: "API key used for Wildfly DEV_MODE"
+        required: true
 
 jobs:
   build-deploy:
@@ -23,15 +30,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y maven
 
-      - name: Generate Cache Name
-        run: echo "CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')" >> $GITHUB_ENV
-        working-directory: src/docker
-
       - name: Retrieve Cached Downloads
         uses: actions/cache@v4
         with:
           path: src/downloads/
-          key: downloads--${{ env.CACHE }}
+          key: ${{ inputs.cache_key }}
 
       - name: Build Dockerfiles
         env:
@@ -62,10 +65,8 @@ jobs:
           git commit -m "Update generated compose.yml for release ${{ github.ref_name }}" || echo "No changes to commit"
           git push
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload Compose File Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: src/build/compose.yml
-          body_path: .github/release_notes.md
-          fail_on_unmatched_files: true
-          make_latest: true
+          name: compose-yml
+          path: src/build/compose.yml

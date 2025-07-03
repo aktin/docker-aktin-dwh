@@ -1,13 +1,10 @@
-name: Test CI/CD Docker
+name: Test Docker Build & Release
 
 on:
-  push:
-    tags:
-      - v[0-9]+.[0-9]+**
+  workflow_dispatch:
 
 jobs:
-  build-deploy:
-    if: env.ACT == 'true'
+  test-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -25,14 +22,10 @@ jobs:
           sudo apt-get install -y maven
 
       - name: Generate Cache Name
-        run: echo "CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')" >> $GITHUB_ENV
-        working-directory: src/docker
-
-      - name: Retrieve Cached Downloads
-        uses: actions/cache@v4
-        with:
-          path: src/downloads/
-          key: downloads--${{ env.CACHE }}-test
+        run: |
+          CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
+          echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
+        working-directory: src/resources
 
       - name: Build Dockerfiles
         env:
@@ -42,7 +35,6 @@ jobs:
 
       - name: Login to GitHub Docker Registry
         run: |
-          echo "=== LOGIN SIMULATION ==="
           echo "Would login to: ghcr.io as ${{ github.actor }}"
 
       - name: Deploy Dockerfiles
@@ -54,7 +46,6 @@ jobs:
 
       - name: Release
         run: |
-          echo "=== GITHUB RELEASE SIMULATION ==="
           if [ -f "src/build/compose.yml" ]; then
             echo "compose.yml exists ($(wc -l < src/build/compose.yml) lines)"
           else

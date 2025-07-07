@@ -15,6 +15,14 @@ on:
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        services:
+          - name: database
+          - name: wildfly
+          - name: httpd
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -29,6 +37,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y maven
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.4.0
 
       - name: Retrieve Cached Downloads
         uses: actions/cache@v4
@@ -49,11 +60,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy Dockerfiles
+      - name: Deploy and Sign Dockerfiles
         run: |
-          docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-database
-          docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-wildfly
-          docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-httpd
+          SERVICE=${{ matrix.services.name }}
+          IMAGE_NAME=ghcr.io/aktin/notaufnahme-dwh-${SERVICE}
+          
+          # Extract service version safely from prod compose.yml
+          VERSION=$(grep "image: ${IMAGE_NAME}:" src/build/compose.yml | \
+            sed -E 's/.*:\$\{[^:]+:-([^}]+)\}/\1/')
+          echo "Detected version for ${SERVICE}: $VERSION"
+
+          LATEST_DIGEST=$(docker push $REGISTRY:latest | tee /dev/stderr | grep -o 'digest: sha256:[a-f0-9]\+' | awk '{print $2}')
+          VERSION_DIGEST=$(docker push $REGISTRY:$VERSION | tee /dev/stderr | grep -o 'digest: sha256:[a-f0-9]\+' | awk '{print $2}')
+          echo "Signing $LATEST_DIGEST"
+          cosign sign --yes $REGISTRY@$LATEST_DIGEST
+          echo "Signing $VERSION_DIGEST"
+          cosign sign --yes $REGISTRY@$VERSION_DIGEST
 
       - name: Commit production compose.yml
         run: |

@@ -70,12 +70,12 @@ jobs:
             sed -E 's/.*:\$\{[^:]+:-([^}]+)\}/\1/')
           echo "Detected version for ${SERVICE}: $VERSION"
 
-          LATEST_DIGEST=$(docker push $REGISTRY:latest | tee /dev/stderr | grep -o 'digest: sha256:[a-f0-9]\+' | awk '{print $2}')
-          VERSION_DIGEST=$(docker push $REGISTRY:$VERSION | tee /dev/stderr | grep -o 'digest: sha256:[a-f0-9]\+' | awk '{print $2}')
+          LATEST_DIGEST=$(docker push IMAGE_NAME:latest | tee /dev/stderr | grep -o 'digest: sha256:[a-f0-9]\+' | awk '{print $2}')
+          VERSION_DIGEST=$(docker push IMAGE_NAME:$VERSION | tee /dev/stderr | grep -o 'digest: sha256:[a-f0-9]\+' | awk '{print $2}')
           echo "Signing $LATEST_DIGEST"
-          cosign sign --yes $REGISTRY@$LATEST_DIGEST
+          cosign sign --yes IMAGE_NAME@$LATEST_DIGEST
           echo "Signing $VERSION_DIGEST"
-          cosign sign --yes $REGISTRY@$VERSION_DIGEST
+          cosign sign --yes IMAGE_NAME@$VERSION_DIGEST
 
       - name: Commit production compose.yml
         run: |

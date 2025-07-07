@@ -147,7 +147,7 @@ extract_artifacts() {
    extract_src "dwh" "${DWH_GITHUB_TAG}"
 }
 
-execute_build_scripts() {
+execute_deb_build_scripts() {
   echo "Building debian packages"
 
   build_package() {
@@ -374,7 +374,7 @@ main() {
   init_build_environment
   download_artifacts
   extract_artifacts
-  execute_build_scripts
+  execute_deb_build_scripts
   prepare_postgresql_docker
   prepare_apache2_docker "wildfly"
   prepare_wildfly_docker

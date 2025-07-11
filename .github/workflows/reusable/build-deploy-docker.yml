@@ -31,7 +31,7 @@ jobs:
           sudo apt-get install -y maven
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3.4.0
+        uses: sigstore/cosign-installer@v3.9.1
 
       - name: Retrieve Cached Downloads
         uses: actions/cache@v4
@@ -68,6 +68,7 @@ jobs:
             echo "Signing $VERSION_DIGEST"
             cosign sign --yes IMAGE_NAME@$VERSION_DIGEST
           done
+
       - name: Commit production compose.yml
         run: |
           mkdir -p generated

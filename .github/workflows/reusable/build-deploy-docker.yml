@@ -52,21 +52,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy and Sign Dockerfiles
+      - name: Deploy images and capture digests
+        id: deploy-and-capture
         run: |
           for SERVICE in database wildfly httpd; do
             IMAGE_NAME=ghcr.io/aktin/notaufnahme-dwh-${SERVICE}
-
-            # Extract service version safely from prod compose.yml
-            VERSION=$(grep "image: ${IMAGE_NAME}:" src/build/compose.yml | sed -E 's/.*:\$\{[^:]+:-([^}]+)\}/\1/')
-            echo "Detected version for ${SERVICE}: $VERSION"
-  
-            LATEST_DIGEST=$(docker push IMAGE_NAME:latest | tee /dev/stderr | grep -o 'digest: sha256:[a-f0-9]\+' | awk '{print $2}')
-            VERSION_DIGEST=$(docker push IMAGE_NAME:$VERSION | tee /dev/stderr | grep -o 'digest: sha256:[a-f0-9]\+' | awk '{print $2}')
-            echo "Signing $LATEST_DIGEST"
-            cosign sign --yes IMAGE_NAME@$LATEST_DIGEST
-            echo "Signing $VERSION_DIGEST"
-            cosign sign --yes IMAGE_NAME@$VERSION_DIGEST
+            LATEST_DIGEST=$(docker push --all-tags ${IMAGE_NAME} | tee /dev/stderr | grep -o 'latest: digest: sha256:[a-f0-9]\+' | awk '{print $3}')          
+            cosign sign --yes "${IMAGE_NAME}@${LATEST_DIGEST}"
           done
 
       - name: Commit production compose.yml

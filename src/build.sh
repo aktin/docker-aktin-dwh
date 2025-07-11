@@ -147,7 +147,7 @@ extract_artifacts() {
    extract_src "dwh" "${DWH_GITHUB_TAG}"
 }
 
-execute_build_scripts() {
+execute_deb_build_scripts() {
   echo "Building debian packages"
 
   build_package() {
@@ -313,7 +313,6 @@ prepare_docker_compose() {
 
 cleanup_old_docker_images() {
   echo "Cleaning up Docker resources..."
-  # Get all images that match namespace
   local images=$(docker images "${IMAGE_NAMESPACE}-*" --format "{{.Repository}}:{{.Tag}}")
   if [ -n "$images" ]; then
     # Remove any containers using these images
@@ -325,12 +324,32 @@ cleanup_old_docker_images() {
         docker rm -f $containers
       fi
     done
-    # Remove all matching images
-    echo "Removing all matching images..."
+    echo "Removing project images..."
     docker rmi $images
   else
-    echo "No images found to cleanup"
+    echo "No project images found to cleanup"
   fi
+
+  local base_images=(
+    "postgres:${POSTGRESQL_VERSION}"
+    "ubuntu:${UBUNTU_VERSION}"
+    "php:${APACHE_VERSION}"
+  )
+  for base_image in "${base_images[@]}"; do
+    if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^${base_image}$"; then
+      echo "Removing base image ${base_image}..."
+      docker rmi "${base_image}"
+    fi
+  done
+}
+
+pull_base_images() {
+  echo "Pulling base images with Content Trust..."
+  # enabled DCT only allows pulling of signed images from Docker Hub
+  export DOCKER_CONTENT_TRUST=1
+  docker pull postgres:${POSTGRESQL_VERSION}
+  docker pull ubuntu:${UBUNTU_VERSION}
+  docker pull php:${APACHE_VERSION}
 }
 
 build_docker_images() {
@@ -374,12 +393,13 @@ main() {
   init_build_environment
   download_artifacts
   extract_artifacts
-  execute_build_scripts
+  execute_deb_build_scripts
   prepare_postgresql_docker
   prepare_apache2_docker "wildfly"
   prepare_wildfly_docker
   prepare_docker_compose
   cleanup_old_docker_images
+  pull_base_images
   build_docker_images
 }
 

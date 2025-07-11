@@ -22,6 +22,41 @@ docker compose up -d
 ```
 The system will be available at `http://localhost` once all containers have started. For [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/), the property files must be copied manually into the `aktin_config` folder. See [this issue]([https://github.com/aktin/docker-aktin-dwh/issues/6](https://github.com/aktin/docker-aktin-dwh/issues/10)) for details.
 
+### Verification of container signatures
+All our Docker images are signed using [Cosign](https://docs.sigstore.dev/cosign/signing/overview/) with keyless signing. You can check that what you run matches what we built:
+
+1. Check cosign installation
+```bash
+cosign version
+
+# Install if needed:
+# macOS: brew install cosign
+# Linux: curl -sSL https://raw.githubusercontent.com/sigstore/cosign/main/install.sh | sh
+```
+
+2. Get the image digest 
+
+Pull the image first:
+```bash
+docker pull ghcr.io/aktin/notaufnahme-dwh-database:latest
+```
+
+Inspect to find the exact digest:
+```bash
+docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh-database:latest
+
+# Example output:
+# ghcr.io/aktin/notaufnahme-dwh-database@sha256:abc123...
+```
+
+3. Verify the signature
+
+Replace `<digest>` with your actual digest:
+```bash
+cosign verify ghcr.io/aktin/notaufnahme-dwh-database@<digest> --certificate-identity="repo:aktin/docker-aktin-dwh" --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+```
+
+If valid, you’ll see output confirming the signature and the trusted GitHub repo. For more information, refer to the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/).
 
 ### Running Multiple AKTIN Instances on the Same Server
 

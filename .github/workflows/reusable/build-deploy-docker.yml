@@ -52,8 +52,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy images and capture digests
-        id: deploy-and-capture
+      - name: Deploy and sign images
+        id: deploy-and-sign
         run: |
           for SERVICE in database wildfly httpd; do
             IMAGE_NAME=ghcr.io/aktin/notaufnahme-dwh-${SERVICE}

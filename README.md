@@ -58,6 +58,8 @@ cosign verify ghcr.io/aktin/notaufnahme-dwh-database@<digest> --certificate-iden
 
 If valid, you’ll see output confirming the signature and the trusted GitHub repo. For more information, refer to the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/).
 
+Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
+
 ### Running Multiple AKTIN Instances on the Same Server
 
 To run multiple AKTIN instances on the same server, place instances of `compose.yml` in separate folders and assign unique ports per instance (`HTTP_PORT`). Docker Compose will automatically use the folder name as the project name, isolating container names, networks, and volumes. You can configure the individual instances using `.env` files:

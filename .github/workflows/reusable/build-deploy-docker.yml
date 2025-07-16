@@ -15,6 +15,9 @@ on:
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -29,6 +32,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y maven
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.9.1
 
       - name: Retrieve Cached Downloads
         uses: actions/cache@v4
@@ -49,11 +55,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy Dockerfiles
+      - name: Deploy and sign images
+        id: deploy-and-sign
         run: |
-          docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-database
-          docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-wildfly
-          docker push --all-tags ghcr.io/aktin/notaufnahme-dwh-httpd
+          for SERVICE in database wildfly httpd; do
+            IMAGE_NAME=ghcr.io/aktin/notaufnahme-dwh-${SERVICE}
+            LATEST_DIGEST=$(docker push --all-tags ${IMAGE_NAME} | tee /dev/stderr | grep -o 'latest: digest: sha256:[a-f0-9]\+' | awk '{print $3}')          
+            cosign sign --yes "${IMAGE_NAME}@${LATEST_DIGEST}"
+          done
 
       - name: Commit production compose.yml
         run: |

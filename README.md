@@ -51,9 +51,9 @@ docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh
 
 3. Verify the signature
 
-Replace `<digest>` with your actual digest:
+Replace `<digest>` with your actual digest. See the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) for more information.
 ```bash
-cosign verify ghcr.io/aktin/notaufnahme-dwh-database@<digest> --certificate-identity="repo:aktin/docker-aktin-dwh" --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+cosign verify ghcr.io/aktin/notaufnahme-dwh-database@<digest> --certificate-identity="https://github.com/aktin/docker-aktin-dwh/.github/workflows/WORKFLOW_NAME@refs/heads/BRANCH_NAME" --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
 ```
 
 If valid, you’ll see output confirming the signature and the trusted GitHub repo. For more information, refer to the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/).

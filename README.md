@@ -20,7 +20,7 @@ echo 'mysecretpassword' > secret.txt
 ```
 docker compose up -d
 ```
-The system will be available at `http://localhost` once all containers have started. For [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/), the property files must be copied manually into the `aktin_config` folder. See [this issue]([https://github.com/aktin/docker-aktin-dwh/issues/6](https://github.com/aktin/docker-aktin-dwh/issues/10)) for details.
+The system will be available at `http://localhost` once all containers have started. The AKTIN I2B2 can be reached at  `http://localhost/webclient` and the DWH manager at `http://localhost/aktin/admin`. For [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/), the property files must be copied manually into the `aktin_config` folder. See [this issue]([https://github.com/aktin/docker-aktin-dwh/issues/6](https://github.com/aktin/docker-aktin-dwh/issues/10)) for details.
 
 ### Verification of container signatures
 All our Docker images are signed using [Cosign](https://docs.sigstore.dev/cosign/signing/overview/) with keyless signing. You can check that what you run matches what we built:

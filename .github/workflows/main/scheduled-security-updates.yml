@@ -1,0 +1,39 @@
+name: Deploy Base Container Security Updates
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+
+jobs:
+  check-postgres:
+    uses: ./.github/workflows/reusable/check-container-update.yml
+    with:
+      container: postgres
+      version_key: POSTGRESQL_VERSION
+
+  check-ubuntu:
+    uses: ./.github/workflows/reusable/check-container-update.yml
+    with:
+      container: ubuntu
+      version_key: UBUNTU_VERSION
+
+  check-php:
+    uses: ./.github/workflows/reusable/check-container-update.yml
+    with:
+      container: php
+      version_key: APACHE_VERSION
+
+  prepare:
+    uses: ./.github/workflows/reusable/prepare-cache.yml
+
+  build-and-deploy:
+    needs: [ check-postgres, check-ubuntu, check-php, prepare ]
+    if: |
+      needs.check-postgres.outputs.update == 'true' ||
+      needs.check-ubuntu.outputs.update == 'true' ||
+      needs.check-php.outputs.update == 'true'
+    uses: ./.github/workflows/reusable/build-deploy-docker.yml
+    with:
+      cache_key: ${{ needs.prepare.outputs.cache_key }}
+    secrets:
+      DEV_API_KEY: ${{ secrets.DEV_API_KEY }}

@@ -20,8 +20,45 @@ echo 'mysecretpassword' > secret.txt
 ```
 docker compose up -d
 ```
-The system will be available at `http://localhost` once all containers have started. For [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/), the property files must be copied manually into the `aktin_config` folder. See [this issue]([https://github.com/aktin/docker-aktin-dwh/issues/6](https://github.com/aktin/docker-aktin-dwh/issues/10)) for details.
+The system will be available at `http://localhost` once all containers have started. The AKTIN I2B2 can be reached at  `http://localhost/webclient` and the DWH manager at `http://localhost/aktin/admin`. For [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/), the property files must be copied manually into the `aktin_config` folder. See [this issue]([https://github.com/aktin/docker-aktin-dwh/issues/6](https://github.com/aktin/docker-aktin-dwh/issues/10)) for details.
 
+### Verification of container signatures
+All our Docker images are signed using [Cosign](https://docs.sigstore.dev/cosign/signing/overview/) with keyless signing. You can check that what you run matches what we built:
+
+1. Check cosign installation
+```bash
+cosign version
+
+# Install if needed:
+# macOS: brew install cosign
+# Linux: curl -sSL https://raw.githubusercontent.com/sigstore/cosign/main/install.sh | sh
+```
+
+2. Get the image digest 
+
+Pull the image first:
+```bash
+docker pull ghcr.io/aktin/notaufnahme-dwh-database:latest
+```
+
+Inspect to find the exact digest:
+```bash
+docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh-database:latest
+
+# Example output:
+# ghcr.io/aktin/notaufnahme-dwh-database@sha256:abc123...
+```
+
+3. Verify the signature
+
+Replace `<digest>` with your actual digest. See the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) for more information.
+```bash
+cosign verify ghcr.io/aktin/notaufnahme-dwh-database@<digest> --certificate-identity="https://github.com/aktin/docker-aktin-dwh/.github/workflows/WORKFLOW_NAME@refs/heads/BRANCH_NAME" --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+```
+
+If valid, you’ll see output confirming the signature and the trusted GitHub repo. For more information, refer to the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/).
+
+Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
 
 ### Running Multiple AKTIN Instances on the Same Server
 
@@ -111,5 +148,8 @@ The WildFly Docker container can run in development mode using the `DEV_MODE` en
 * Default port: **80** (configurable via `HTTP_PORT` environment variable)
 
 ## Environment Variables
-
-* `HTTP_PORT`: Sets the exposed port for the Apache web server (default: 80)
+These variables can be defined in a `.env` file and are used throughout `compose.yml` to configure the system:
+- `HTTP_PORT`: Exposed port for the Apache HTTPD server (default: `80`)
+- `DB_HOST`: Hostname of the database container (default: `database`)
+- `DB_PORT`: Port to reach PostgreSQL (default: `5432`)
+- `DEV_MODE`: Enables WildFly dev mode (default: `false`)

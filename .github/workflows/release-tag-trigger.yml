@@ -7,11 +7,11 @@ on:
 
 jobs:
   prepare:
-    uses: ./.github/workflows/reusable/prepare-cache.yml
+    uses: ./.github/workflows/prepare-cache.yml
 
   build-and-deploy:
     needs: prepare
-    uses: ./.github/workflows/reusable/build-deploy-docker.yml
+    uses: ./.github/workflows/build-deploy-docker.yml
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}
     secrets:
@@ -20,21 +20,24 @@ jobs:
   release:
     needs: build-and-deploy
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Sparse Checkout of Release Notes File
+      - name: Checkout release notes
         uses: actions/checkout@v4
         with:
           sparse-checkout: |
             .github/release_notes.md
           sparse-checkout-cone-mode: false
+          fetch-depth: 1
 
-      - name: Download Compose File
+      - name: Download compose artifact
         uses: actions/download-artifact@v4
         with:
           name: compose-yml
           path: src/build
 
-      - name: Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: src/build/compose.yml

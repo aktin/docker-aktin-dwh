@@ -18,7 +18,7 @@ jobs:
         with:
           sparse-checkout: |
             src/resources/versions
-          sparse-checkout-cone-mode: true
+          sparse-checkout-cone-mode: false
           fetch-depth: 1
 
       - name: Generate cache key from versions file

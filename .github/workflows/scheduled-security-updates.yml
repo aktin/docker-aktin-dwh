@@ -56,7 +56,6 @@ jobs:
         with:
           sparse-checkout: |
             .github
-          sparse-checkout-cone-mode: true
           fetch-depth: 1
 
       - name: Prepare folder

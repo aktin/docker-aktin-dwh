@@ -66,7 +66,7 @@ jobs:
             docker push --all-tags "$IMAGE"
             # capture the registry digest for :latest and sign ONLY that
             # pushing :latest again is very cheap because of content-addressable layers in ghcr
-            LATEST_DIGEST="$(docker push "${IMAGE}:latest" | awk '/digest: sha256:/ {print $NF}' | tail -n1)"
+            LATEST_DIGEST="$(docker push "${IMAGE}:latest" | grep -Eo 'sha256:[0-9a-f]{64}' | tail -n1)"
             if [[ -z "$LATEST_DIGEST" ]]; then
               echo "Failed to resolve digest for ${IMAGE}:latest" >&2
               exit 1

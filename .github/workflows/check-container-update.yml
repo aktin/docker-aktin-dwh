@@ -36,7 +36,6 @@ jobs:
           sparse-checkout: |
             src/resources/versions
             .github/
-          sparse-checkout-cone-mode: true
           fetch-depth: 1
 
       - name: Read version data and load digest file

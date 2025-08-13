@@ -27,8 +27,6 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     outputs:
       update: ${{ steps.compare-digest.outputs.update }}
       artifact_name: ${{ steps.read-version.outputs.artifact_name }}
@@ -41,7 +39,7 @@ jobs:
           sparse-checkout-cone-mode: true
           fetch-depth: 1
 
-      - name: Read version and prepare artifact name
+      - name: Read version data and load digest file
         id: read-version
         run: |
           set -euo pipefail

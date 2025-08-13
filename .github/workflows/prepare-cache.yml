@@ -11,11 +11,19 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      cache_key: downloads--${{ hashFiles('src/resources/versions') }}
+      cache_key: ${{ steps.cache.outputs.cache_key }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Sparse Checkout of Versions File
+        uses: actions/checkout@v4
         with:
           sparse-checkout: |
             src/resources/versions
-          sparse-checkout-cone-mode: false
+          sparse-checkout-cone-mode: true
           fetch-depth: 1
+
+      - name: Generate cache key from versions file
+        id: cache
+        run: |
+          set -euo pipefail
+          DIGEST="$(md5sum src/resources/versions | awk '{print $1}')"
+          echo "cache_key=downloads--${DIGEST}" >> "$GITHUB_OUTPUT"

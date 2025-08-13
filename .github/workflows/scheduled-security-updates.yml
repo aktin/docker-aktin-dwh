@@ -1,0 +1,96 @@
+name: Deploy Base Container Security Updates
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    uses: ./.github/workflows/prepare-cache.yml
+
+  check-postgres:
+    needs: [ prepare ]
+    uses: ./.github/workflows/check-container-update.yml
+    with:
+      container: postgres
+      version_key: POSTGRESQL_VERSION
+
+  check-ubuntu:
+    needs: [ prepare ]
+    uses: ./.github/workflows/check-container-update.yml
+    with:
+      container: ubuntu
+      version_key: UBUNTU_VERSION
+
+  check-php:
+    needs: [ prepare ]
+    uses: ./.github/workflows/check-container-update.yml
+    with:
+      container: php
+      version_key: APACHE_VERSION
+
+  build-deploy:
+    needs: [ prepare, check-postgres, check-ubuntu, check-php ]
+    if: |
+      needs.check-postgres.outputs.update == 'true' ||
+      needs.check-ubuntu.outputs.update == 'true' ||
+      needs.check-php.outputs.update == 'true'
+    uses: ./.github/workflows/build-deploy-docker.yml
+    with:
+      cache_key: ${{ needs.prepare.outputs.cache_key }}
+    secrets:
+      DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
+
+  commit-digests:
+    needs: [ check-postgres, check-ubuntu, check-php, build-deploy ]
+    if: |
+      needs.check-postgres.outputs.update == 'true' ||
+      needs.check-ubuntu.outputs.update == 'true' ||
+      needs.check-php.outputs.update == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+
+      - name: Prepare folder
+        run: mkdir -p .github/digests
+
+      - name: Download postgres digest
+        if: needs.check-postgres.outputs.update == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.check-postgres.outputs.artifact_name }}
+          path: .github/digests
+
+      - name: Download ubuntu digest
+        if: needs.check-ubuntu.outputs.update == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.check-ubuntu.outputs.artifact_name }}
+          path: .github/digests
+
+      - name: Download php digest
+        if: needs.check-php.outputs.update == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.check-php.outputs.artifact_name }}
+          path: .github/digests
+
+      - name: Commit all updated digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/* ]] || exit 0
+          BRANCH="${GITHUB_REF_NAME:-main}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/digests
+          git commit -m "chore: update base image digests [skip ci]" || exit 0
+          git push origin HEAD:"$BRANCH"

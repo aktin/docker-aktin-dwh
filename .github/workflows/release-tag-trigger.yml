@@ -1,0 +1,57 @@
+name: Create new Docker Release
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+**
+
+jobs:
+  prepare:
+    uses: ./.github/workflows/prepare-cache.yml
+
+  build-deploy:
+    needs: [ prepare ]
+    uses: ./.github/workflows/build-deploy-docker.yml
+    with:
+      cache_key: ${{ needs.prepare.outputs.cache_key }}
+    secrets:
+      DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
+
+  release:
+    needs: [ build-deploy ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/release_notes.md
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+
+      - name: Download compose artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: compose-yml
+          path: src/build
+
+      - name: Commit generated compose.yml
+        run: |
+          set -euo pipefail
+          mkdir -p generated
+          cp -f src/build/compose.yml generated/compose.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add --force generated/compose.yml
+          git commit -m "chore: update generated compose.yml for ${{ github.ref_name }} [skip ci]" || exit 0
+          git push
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src/build/compose.yml
+          body_path: .github/release_notes.md
+          fail_on_unmatched_files: true
+          make_latest: true

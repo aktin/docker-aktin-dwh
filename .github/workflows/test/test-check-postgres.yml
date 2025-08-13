@@ -5,7 +5,7 @@ on:
 
 jobs:
   test-postgresql:
-    uses: ./.github/workflows/reusable/check-container-update.yml
+    uses: ./.github/workflows/check-container-update.yml
     with:
       container: postgres
       version_key: POSTGRESQL_VERSION

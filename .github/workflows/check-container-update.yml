@@ -1,0 +1,93 @@
+name: Check Base Container Update
+
+on:
+  workflow_call:
+    inputs:
+      container:
+        description: "The container image name on Docker Hub"
+        required: true
+        type: string
+      version_key:
+        description: "The variable name to extract the version from 'src/resources/versions'"
+        required: true
+        type: string
+      architecture:
+        description: "The image architecture to check (default: 'amd64')"
+        required: false
+        type: string
+        default: "amd64"
+    outputs:
+      update:
+        description: "True if container has a new digest"
+        value: ${{ jobs.check.outputs.update }}
+      artifact_name:
+        description: "Name of the uploaded digest artifact"
+        value: ${{ jobs.check.outputs.artifact_name }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      update: ${{ steps.compare-digest.outputs.update }}
+      artifact_name: ${{ steps.read-version.outputs.artifact_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            src/resources/versions
+            .github/
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+
+      - name: Read version data and load digest file
+        id: read-version
+        run: |
+          set -euo pipefail
+          VERSION_FILE="src/resources/versions"
+          VERSION=$(grep -E "^${{ inputs.version_key }}=" "$VERSION_FILE" | cut -d= -f2)
+          if [[ -z "$VERSION" ]]; then
+            echo "Version not found for key: ${{ inputs.version_key }}" >&2
+            exit 1
+          fi
+          echo "CONTAINER=${{ inputs.container }}" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "ARCH=${{ inputs.architecture }}" >> $GITHUB_ENV
+          DIGEST_DIR=".github/digests"
+          mkdir -p "$DIGEST_DIR"
+          echo "DIGEST_FILE=$DIGEST_DIR/digest-${{ inputs.container }}" >> $GITHUB_ENV
+          echo "artifact_name=digest-${{ inputs.container }}" >> $GITHUB_OUTPUT
+
+      - name: Fetch current digest from Docker Hub
+        id: fetch-digest
+        run: |
+          set -euo pipefail
+          URL="https://registry.hub.docker.com/v2/repositories/library/$CONTAINER/tags/$VERSION"
+          DIGEST="$(curl -sf "$URL" | jq -r ".images[] | select(.architecture==\"$ARCH\") | .digest" | head -n1)"
+          if [ -z "$DIGEST" ] || [ "$DIGEST" == "null" ]; then
+            echo "Digest not found for $CONTAINER:$VERSION ($ARCH)" >&2
+            exit 1
+          fi
+          echo "$DIGEST" > current_digest.txt
+
+      - name: Compare digests
+        id: compare-digest
+        run: |
+          set -euo pipefail
+          CLEAN_CURRENT="$(tr -d '\n\r' < current_digest.txt)"
+          CLEAN_PREVIOUS="$([ -f "$DIGEST_FILE" ] && tr -d '\n\r' < "$DIGEST_FILE" || echo "" )"
+          if [ "$CLEAN_CURRENT" != "$CLEAN_PREVIOUS" ]; then
+            echo "update=true" >> $GITHUB_OUTPUT
+            echo "CHANGED=true" >> $GITHUB_ENV
+            echo "$CLEAN_CURRENT" > "$DIGEST_FILE"
+          else
+            echo "update=false" >> $GITHUB_OUTPUT
+            echo "CHANGED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Upload updated digest artifact
+        if: env.CHANGED == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.read-version.outputs.artifact_name }}
+          path: ${{ env.DIGEST_FILE }}
+          retention-days: 1

@@ -8,7 +8,7 @@ on:
         value: ${{ jobs.prepare-cache.outputs.cache_key }}
 
 jobs:
-  prepare-cache:
+  prepare:
     runs-on: ubuntu-latest
     outputs:
       cache_key: downloads--${{ hashFiles('src/resources/versions') }}

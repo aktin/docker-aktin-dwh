@@ -30,7 +30,7 @@ jobs:
       container: php
       version_key: APACHE_VERSION
 
-  build-and-deploy:
+  build-deploy:
     needs: [ prepare, check-postgres, check-ubuntu, check-php ]
     if: |
       needs.check-postgres.outputs.update == 'true' ||
@@ -43,7 +43,7 @@ jobs:
       DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
 
   commit-digests:
-    needs: [ prepare, check-postgres, check-ubuntu, check-php, build-and-deploy ]
+    needs: [ prepare, check-postgres, check-ubuntu, check-php, build-deploy ]
     if: |
       needs.check-postgres.outputs.update == 'true' ||
       needs.check-ubuntu.outputs.update == 'true' ||

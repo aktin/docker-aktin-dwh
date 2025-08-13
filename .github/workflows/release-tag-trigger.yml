@@ -9,7 +9,7 @@ jobs:
   prepare:
     uses: ./.github/workflows/prepare-cache.yml
 
-  build-and-deploy:
+  build-deploy:
     needs: prepare
     uses: ./.github/workflows/build-deploy-docker.yml
     with:
@@ -18,7 +18,7 @@ jobs:
       DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
 
   release:
-    needs: build-and-deploy
+    needs: [ build-deploy ]
     runs-on: ubuntu-latest
     permissions:
       contents: write

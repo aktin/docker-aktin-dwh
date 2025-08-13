@@ -16,11 +16,14 @@ jobs:
   build-deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      packages: write
       contents: write
+      id-token: write
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -36,19 +39,19 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3.9.1
 
-      - name: Retrieve Cached Downloads
+      - name: Restore cached downloads
         uses: actions/cache@v4
         with:
           path: src/downloads/
           key: ${{ inputs.cache_key }}
 
-      - name: Build Dockerfiles
+      - name: Build Docker images
         env:
           DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
-        run: ./build.sh --create-latest
         working-directory: src
+        run: ./build.sh --create-latest
 
-      - name: Login to GitHub Docker Registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -56,26 +59,36 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy and sign images
-        id: deploy-and-sign
+        id: deploy-sign
         run: |
+          set -euo pipefail
           for SERVICE in database wildfly httpd; do
-            IMAGE_NAME=ghcr.io/aktin/notaufnahme-dwh-${SERVICE}
-            LATEST_DIGEST=$(docker push --all-tags ${IMAGE_NAME} | tee /dev/stderr | grep -o 'latest: digest: sha256:[a-f0-9]\+' | awk '{print $3}')          
-            cosign sign --yes "${IMAGE_NAME}@${LATEST_DIGEST}"
-          done
+            IMAGE="ghcr.io/aktin/notaufnahme-dwh-${SERVICE}"
+            docker push --all-tags "$IMAGE"
+            # capture the registry digest for :latest and sign ONLY that
+            # pushing :latest again is very cheap because of content-addressable layers in ghcr
+            LATEST_DIGEST="$(docker push "${IMAGE}:latest" | awk '/digest: sha256:/ {print $NF}' | tail -n1)"
+            if [[ -z "$LATEST_DIGEST" ]]; then
+              echo "Failed to resolve digest for ${IMAGE}:latest" >&2
+              exit 1
+            fi
+            cosign sign --yes "${IMAGE}@${LATEST_DIGEST}"
 
-      - name: Commit production compose.yml
+      - name: Commit generated compose.yml
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p generated
           cp src/build/compose.yml generated/compose.yml
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add --force generated/compose.yml
-          git commit -m "Update generated compose.yml for release ${{ github.ref_name }}" || echo "No changes to commit"
+          git commit -m "chore: update generated compose.yml for ${{ github.ref_name }} [skip ci]" || exit 0
           git push
 
-      - name: Upload Compose File Artifact
+      - name: Upload compose artifact
         uses: actions/upload-artifact@v4
         with:
           name: compose-yml
           path: src/build/compose.yml
+          if-no-files-found: error

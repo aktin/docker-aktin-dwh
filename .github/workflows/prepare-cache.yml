@@ -11,18 +11,11 @@ jobs:
   prepare-cache:
     runs-on: ubuntu-latest
     outputs:
-      cache_key: ${{ steps.cache.outputs.cache_key }}
+      cache_key: downloads--${{ hashFiles('src/resources/versions') }}
     steps:
-      - name: Sparse Checkout of Versions File
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           sparse-checkout: |
             src/resources/versions
           sparse-checkout-cone-mode: false
-
-      - name: Generate Cache Name
-        id: cache
-        run: |
-          CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
-          echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
-        working-directory: src/resources
+          fetch-depth: 1

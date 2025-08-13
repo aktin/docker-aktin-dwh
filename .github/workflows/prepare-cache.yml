@@ -5,7 +5,7 @@ on:
     outputs:
       cache_key:
         description: "The generated cache key"
-        value: ${{ jobs.prepare-cache.outputs.cache_key }}
+        value: ${{ jobs.prepare.outputs.cache_key }}
 
 jobs:
   prepare:

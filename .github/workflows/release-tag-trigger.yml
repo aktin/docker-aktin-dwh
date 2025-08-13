@@ -37,6 +37,17 @@ jobs:
           name: compose-yml
           path: src/build
 
+      - name: Commit generated compose.yml
+        run: |
+          set -euo pipefail
+          mkdir -p generated
+          cp -f src/build/compose.yml generated/compose.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add --force generated/compose.yml
+          git commit -m "chore: update generated compose.yml for ${{ github.ref_name }} [skip ci]" || exit 0
+          git push
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

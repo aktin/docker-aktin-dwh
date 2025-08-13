@@ -344,9 +344,7 @@ cleanup_old_docker_images() {
 }
 
 pull_base_images() {
-  echo "Pulling base images with Content Trust..."
-  # enabled DCT only allows pulling of signed images from Docker Hub
-  export DOCKER_CONTENT_TRUST=1
+  echo "Pulling base images..."
   docker pull postgres:${POSTGRESQL_VERSION}
   docker pull ubuntu:${UBUNTU_VERSION}
   docker pull php:${APACHE_VERSION}

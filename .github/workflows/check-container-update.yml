@@ -15,36 +15,40 @@ on:
         description: "The image architecture to check (default: 'amd64')"
         required: false
         type: string
-        default: 'amd64'
+        default: "amd64"
     outputs:
       update:
         description: "True if container has a new digest"
         value: ${{ jobs.check.outputs.update }}
+      artifact_name:
+        description: "Name of the uploaded digest artifact"
+        value: ${{ jobs.check.outputs.artifact_name }}
 
 jobs:
   check:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     outputs:
       update: ${{ steps.compare-digest.outputs.update }}
+      artifact_name: ${{ steps.read-version.outputs.artifact_name }}
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
             src/resources/versions
             .github/
-          sparse-checkout-cone-mode: false
+          sparse-checkout-cone-mode: true
           fetch-depth: 1
 
-      - name: Read version from file
+      - name: Read version and prepare artifact name
         id: read-version
         run: |
           set -euo pipefail
           VERSION_FILE="src/resources/versions"
-          VERSION=$(grep "^${{ inputs.version_key }}=" "$VERSION_FILE" | cut -d= -f2)
-          if [ -z "$VERSION" ]; then
-            echo "Version not found for key: ${{ inputs.version_key }}"
+          VERSION=$(grep -E "^${{ inputs.version_key }}=" "$VERSION_FILE" | cut -d= -f2)
+          if [[ -z "$VERSION" ]]; then
+            echo "Version not found for key: ${{ inputs.version_key }}" >&2
             exit 1
           fi
           echo "CONTAINER=${{ inputs.container }}" >> $GITHUB_ENV
@@ -53,6 +57,7 @@ jobs:
           DIGEST_DIR=".github/digests"
           mkdir -p "$DIGEST_DIR"
           echo "DIGEST_FILE=$DIGEST_DIR/digest-${{ inputs.container }}" >> $GITHUB_ENV
+          echo "artifact_name=digest-${{ inputs.container }}" >> $GITHUB_OUTPUT
 
       - name: Fetch current digest from Docker Hub
         id: fetch-digest
@@ -81,15 +86,10 @@ jobs:
             echo "CHANGED=false" >> $GITHUB_ENV
           fi
 
-      - name: Commit updated digest
+      - name: Upload updated digest artifact
         if: env.CHANGED == 'true'
-        run: |
-          set -euo pipefail
-          BRANCH="${GITHUB_REF_NAME:-main}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin "$BRANCH"
-          git checkout -B "$BRANCH" "origin/$BRANCH"
-          git add "$DIGEST_FILE"
-          git commit -m "chore: update digest for $CONTAINER:$VERSION" || exit 0
-          git push origin HEAD:"$BRANCH"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.read-version.outputs.artifact_name }}
+          path: ${{ env.DIGEST_FILE }}
+          retention-days: 1

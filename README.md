@@ -29,10 +29,10 @@ All our Docker images are signed using [Cosign](https://docs.sigstore.dev/cosign
 ```bash
 cosign version
 
-# Install if needed:
-# macOS: brew install cosign
-# Linux: curl -sSL https://raw.githubusercontent.com/sigstore/cosign/main/install.sh | sh
+# Example output:
+# GitVersion:    v2.5.3
 ```
+If needed, install it following [this instruction](https://docs.sigstore.dev/cosign/system_config/installation/).
 
 2. Get the image digest 
 
@@ -53,12 +53,16 @@ docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh
 
 Replace `<digest>` with your actual digest. See the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) for more information.
 ```bash
-cosign verify ghcr.io/aktin/notaufnahme-dwh-database@<digest> --certificate-identity="https://github.com/aktin/docker-aktin-dwh/.github/workflows/WORKFLOW_NAME@refs/heads/BRANCH_NAME" --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+cosign verify \
+--certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
+--certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+ghcr.io/aktin/notaufnahme-dwh-database@sha256:abc123...
+
+# Example output:
+# Verification for ghcr.io/aktin/notaufnahme-dwh-database@sha256:abc123 --
 ```
 
-If valid, you’ll see output confirming the signature and the trusted GitHub repo. For more information, refer to the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/).
-
-Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
+If valid, you’ll see output confirming the signature and the trusted GitHub repo. For more information, refer to the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/). Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
 
 ### Running Multiple AKTIN Instances on the Same Server
 

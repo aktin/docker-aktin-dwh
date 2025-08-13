@@ -10,7 +10,7 @@ jobs:
     uses: ./.github/workflows/prepare-cache.yml
 
   build-deploy:
-    needs: prepare
+    needs: [ prepare ]
     uses: ./.github/workflows/build-deploy-docker.yml
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}

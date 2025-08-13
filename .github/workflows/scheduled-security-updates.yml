@@ -43,7 +43,7 @@ jobs:
       DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
 
   commit-digests:
-    needs: [ prepare, check-postgres, check-ubuntu, check-php, build-deploy ]
+    needs: [ check-postgres, check-ubuntu, check-php, build-deploy ]
     if: |
       needs.check-postgres.outputs.update == 'true' ||
       needs.check-ubuntu.outputs.update == 'true' ||

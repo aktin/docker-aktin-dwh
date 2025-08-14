@@ -25,44 +25,43 @@ The system will be available at `http://localhost` once all containers have star
 ### Verification of container signatures
 All our Docker images are signed using [Cosign](https://docs.sigstore.dev/cosign/signing/overview/) with keyless signing. You can check that what you run matches what we built:
 
-1. Check cosign installation
+1. Check cosign installation. If needed, install it following [this instruction](https://docs.sigstore.dev/cosign/system_config/installation/).
 ```bash
 cosign version
 
 # Example output:
 # GitVersion:    v2.5.3
 ```
-If needed, install it following [this instruction](https://docs.sigstore.dev/cosign/system_config/installation/).
 
 2. Get the image digest 
 
 Pull the image first:
 ```bash
-docker pull ghcr.io/aktin/notaufnahme-dwh-database:latest
+docker pull ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
 ```
 
 Inspect to find the exact digest:
 ```bash
-docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh-database:latest
+docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
 
 # Example output:
-# ghcr.io/aktin/notaufnahme-dwh-database@sha256:abc123...
+# ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
 ```
 
-3. Verify the signature
-
-Replace `<digest>` with your actual digest. See the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) for more information.
+3. Verify the signature. If valid, you’ll see output confirming the signature and the trusted GitHub repo. For more information, refer to the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) and the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/). Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
 ```bash
 cosign verify \
 --certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-ghcr.io/aktin/notaufnahme-dwh-database@sha256:abc123...
+ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
 
 # Example output:
-# Verification for ghcr.io/aktin/notaufnahme-dwh-database@sha256:abc123 --
+# Verification for ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd --
+# The following checks were performed on each of these signatures:
+#   - The cosign claims were validated
+#   - Existence of the claims in the transparency log was verified offline
+#   - The code-signing certificate was verified using trusted certificate authority certificates
 ```
-
-If valid, you’ll see output confirming the signature and the trusted GitHub repo. For more information, refer to the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/). Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
 
 ### Running Multiple AKTIN Instances on the Same Server
 

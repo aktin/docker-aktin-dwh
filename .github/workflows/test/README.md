@@ -35,7 +35,7 @@ This workflow builds the Docker images and runs comprehensive security scans inc
 
 ```bash
 # Run with results saved to ./scan-results
-act -j test-scan --bind "$(pwd):/workspace"
+act -j test-scan --bind "$(pwd):/workspace" --env HOST_UID=$(id -u) --env HOST_GID=$(id -g)
 
 # View results after completion
 ls -la ./scan-results/

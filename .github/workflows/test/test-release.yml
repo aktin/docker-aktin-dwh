@@ -15,8 +15,8 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          distribution: "temurin"
+          java-version: "21"
 
       - name: Install Maven
         run: |
@@ -32,9 +32,11 @@ jobs:
 
       - name: Build Docker images
         env:
-          DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
+          DEV_API_KEY: "test-key"
         working-directory: src
-        run: ./build.sh --create-latest
+        run: |
+          export DOCKER_BUILDKIT=0
+          ./build.sh --create-latest
 
       - name: Login to GitHub Docker Registry
         run: |

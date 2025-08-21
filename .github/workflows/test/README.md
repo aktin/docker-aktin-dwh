@@ -1,6 +1,7 @@
 # Running GitHub Actions Locally with `act`
 
-This repo uses [`act`](https://github.com/nektos/act) to run GitHub Actions workflows locally for testing CI/CD pipelines. `act` lets you run GitHub Actions using Docker simulating the GitHub Actions environment.
+This repo uses [`act`](https://github.com/nektos/act) to run GitHub Actions workflows locally for testing CI/CD pipelines. `act` lets you run GitHub Actions using Docker simulating the GitHub Actions
+environment.
 
 ## Prerequisites
 
@@ -8,9 +9,11 @@ This repo uses [`act`](https://github.com/nektos/act) to run GitHub Actions work
 - `act` installed ([install guide](https://nektosact.com/installation/index.html))
 
 ## How to Run
+
 These test workflows are triggered manually (`workflow_dispatch`) and do **not** push or publish anything when tested with `act`.
 
 ### Arguments:
+
 - `-j`: Job name to run
 
 ### Run the Digest Update Check Workflow
@@ -39,13 +42,6 @@ act -j test-scan --bind "$(pwd):/workspace" --env HOST_UID=$(id -u) --env HOST_G
 
 # View results after completion
 ls -la ./scan-results/
-cat ./scan-results/SUMMARY.md
 ```
 
-The scan results will include:
-- hadolint.txt - Dockerfile linting issues
-- dockle.txt - Container hardening recommendations
-- trivy-vulns.txt - CVE vulnerabilities (HIGH/CRITICAL)
-- trivy-config.txt - Configuration issues
-- trivy-secrets.txt - Exposed secrets detection
-- sbom/ - CycloneDX XML SBOMs for each image
+The scan results are organized by service. Each service gets its own complete security report set, with docker-compose configuration scans in a separate folder.

@@ -1,0 +1,160 @@
+name: Test Docker Build & Security Scan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-scan:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
+      SERVICES: "database wildfly httpd"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Maven
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y maven
+
+      - name: Install security tools
+        run: |
+          # Install Hadolint
+          wget -O /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+          chmod +x /tmp/hadolint
+          sudo mv /tmp/hadolint /usr/local/bin/
+
+          # Install Dockle
+          VERSION=$(curl -s https://api.github.com/repos/goodwithtech/dockle/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+          wget -O /tmp/dockle.tar.gz https://github.com/goodwithtech/dockle/releases/download/v${VERSION}/dockle_${VERSION}_Linux-64bit.tar.gz
+          tar zxf /tmp/dockle.tar.gz -C /tmp
+          sudo mv /tmp/dockle /usr/local/bin/
+
+          # Install Trivy
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+          # Install Syft
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Build Docker images
+        env:
+          DEV_API_KEY: "test-key"
+        working-directory: src
+        run: |
+          export DOCKER_BUILDKIT=0
+          ./build.sh
+
+      - name: Get image tags
+        id: get-tags
+        run: |
+          echo "WILDFLY_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-wildfly | head -1)" >> $GITHUB_ENV
+          echo "HTTPD_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-httpd | head -1)" >> $GITHUB_ENV
+          echo "DATABASE_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-database | head -1)" >> $GITHUB_ENV
+
+      - name: Lint Dockerfiles with Hadolint
+        run: |
+          mkdir -p scan-results
+          for dockerfile in src/build/*/Dockerfile; do
+            if [ -f "$dockerfile" ]; then
+              echo "=== Scanning $dockerfile ===" | tee -a scan-results/hadolint.txt
+              hadolint "$dockerfile" 2>&1 | tee -a scan-results/hadolint.txt || true
+              echo "---" | tee -a scan-results/hadolint.txt
+            fi
+          done
+          for dockerfile in src/docker/*/Dockerfile; do
+            if [ -f "$dockerfile" ]; then
+              echo "=== Scanning template: $dockerfile ===" | tee -a scan-results/hadolint.txt
+              hadolint "$dockerfile" 2>&1 | tee -a scan-results/hadolint.txt || true
+              echo "---" | tee -a scan-results/hadolint.txt
+            fi
+          done
+
+      - name: Security scan with Dockle
+        run: |
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            echo "=== Scanning ${IMAGE}:${TAG} ===" | tee -a scan-results/dockle.txt
+            dockle --exit-code 0 "${IMAGE}:${TAG}" 2>&1 | tee -a scan-results/dockle.txt || true
+            echo "---" | tee -a scan-results/dockle.txt
+          done
+
+      - name: Vulnerability scan with Trivy
+        run: |
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            echo "=== Scanning ${IMAGE}:${TAG} ===" | tee -a scan-results/trivy-vulns.txt
+            trivy image --exit-code 0 "${IMAGE}:${TAG}" 2>&1 | tee -a scan-results/trivy-vulns.txt || true
+            echo "---" | tee -a scan-results/trivy-vulns.txt
+          done
+
+      - name: Config scan with Trivy
+        run: |
+          echo "Scanning Dockerfiles for misconfigurations..." | tee -a scan-results/trivy-config.txt
+          for dockerfile in src/build/*/Dockerfile; do
+            if [ -f "$dockerfile" ]; then
+              echo "=== Scanning $dockerfile ===" | tee -a scan-results/trivy-config.txt
+              trivy config --exit-code 0 "$dockerfile" 2>&1 | tee -a scan-results/trivy-config.txt || true
+              echo "---" | tee -a scan-results/trivy-config.txt
+            fi
+          done
+          echo "Scanning Docker Compose files..." | tee -a scan-results/trivy-config.txt
+          for compose in src/build/*.yml; do
+            if [ -f "$compose" ]; then
+              echo "=== Scanning $compose ===" | tee -a scan-results/trivy-config.txt
+              trivy config --exit-code 0 "$compose" 2>&1 | tee -a scan-results/trivy-config.txt || true
+              echo "---" | tee -a scan-results/trivy-config.txt
+            fi
+          done
+
+      - name: Secret scan with Trivy
+        run: |
+          echo "=== Trivy Secret Scan Results ===" | tee scan-results/trivy-secrets.txt
+          
+          # Scan built images for secrets
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            echo "Scanning ${IMAGE}:${TAG} for secrets" | tee -a scan-results/trivy-secrets.txt
+            trivy image --exit-code 0 --scanners secret "${IMAGE}:${TAG}" 2>&1 | tee -a scan-results/trivy-secrets.txt || true
+            echo "---" | tee -a scan-results/trivy-secrets.txt
+          done
+          
+          # Scan filesystem for secrets
+          echo "Scanning build directory for secrets..." | tee -a scan-results/trivy-secrets.txt
+          trivy fs --exit-code 0 --scanners secret src/build/ 2>&1 | tee -a scan-results/trivy-secrets.txt || true
+
+      - name: Generate SBOM with Syft
+        run: |
+          mkdir -p scan-results/sbom
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            echo "Generating SBOM for ${SERVICE}"
+            syft "${IMAGE}:${TAG}" -o cyclonedx-xml > "scan-results/sbom/${SERVICE}-sbom.xml"
+            echo "SBOM saved to scan-results/sbom/${SERVICE}-sbom.xml"
+          done
+
+      - name: Copy results to host
+        run: |
+          cp -r scan-results /workspace/scan-results 2>/dev/null || true
+          echo "Results available in ./scan-results in your project directory"

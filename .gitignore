@@ -4,3 +4,4 @@ build/
 downloads/
 .secrets
 generated/
+scan-results

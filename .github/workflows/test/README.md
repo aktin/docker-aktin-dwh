@@ -28,3 +28,24 @@ This workflow builds the Docker images and simulates pushing them and preparing 
 ```bash
 act -j test-release
 ```
+
+### Run the Security Scan Workflow
+
+This workflow builds the Docker images and runs comprehensive security scans including Hadolint, Dockle, Trivy, and generates SBOMs with Syft.
+
+```bash
+# Run with results saved to ./scan-results
+act -j test-scan --bind "$(pwd):/workspace"
+
+# View results after completion
+ls -la ./scan-results/
+cat ./scan-results/SUMMARY.md
+```
+
+The scan results will include:
+- hadolint.txt - Dockerfile linting issues
+- dockle.txt - Container hardening recommendations
+- trivy-vulns.txt - CVE vulnerabilities (HIGH/CRITICAL)
+- trivy-config.txt - Configuration issues
+- trivy-secrets.txt - Exposed secrets detection
+- sbom/ - CycloneDX XML SBOMs for each image

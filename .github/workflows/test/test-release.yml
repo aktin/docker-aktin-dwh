@@ -7,8 +7,10 @@ jobs:
   test-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -21,17 +23,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y maven
 
-      - name: Generate Cache Name
+      - name: Generate cache key from versions file
+        id: cache
         run: |
-          CACHE=$(sort versions | awk '!/(^[[:space:]]*$|DWH_GITHUB_TAG=|_CONTAINER_VERSION=|#)/' ORS='--')
-          echo "cache_key=downloads--$CACHE" >> $GITHUB_OUTPUT
-        working-directory: src/resources
+          set -euo pipefail
+          DIGEST="$(md5sum src/resources/versions | awk '{print $1}')"
+          echo "Cache Key: ${DIGEST}"
 
-      - name: Build Dockerfiles
+      - name: Build Docker images
         env:
           DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
-        run: ./build.sh --create-latest
         working-directory: src
+        run: ./build.sh --create-latest
 
       - name: Login to GitHub Docker Registry
         run: |

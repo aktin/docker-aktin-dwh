@@ -1,4 +1,4 @@
-name: Deploy Base Container Security Updates
+name: Scheduled Base Container Security Updates
 
 on:
   schedule:

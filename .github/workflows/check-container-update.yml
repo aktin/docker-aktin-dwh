@@ -1,4 +1,4 @@
-name: Check Base Container Update
+name: Check Base Container
 
 on:
   workflow_call:

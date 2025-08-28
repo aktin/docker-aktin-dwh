@@ -26,9 +26,11 @@ jobs:
       - name: Checkout release notes
         uses: actions/checkout@v4
         with:
+          ref: main
           sparse-checkout: |
             .github/release_notes.md
-          sparse-checkout-cone-mode: false
+            generated
+          sparse-checkout-cone-mode: true
           fetch-depth: 1
 
       - name: Download compose artifact

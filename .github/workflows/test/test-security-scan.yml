@@ -53,9 +53,9 @@ jobs:
       - name: Build Docker images
         env:
           DEV_API_KEY: "test-key"
+          DOCKER_BUILDKIT: "0"
         working-directory: src
         run: |
-          export DOCKER_BUILDKIT=0
           ./build.sh
 
       - name: Get image tags
@@ -135,5 +135,4 @@ jobs:
       - name: Copy results to host
         run: |
           cp -r scan-results /workspace/scan-results 2>/dev/null || true
-          # Fix ownership to match host user
-          chown -R 1000:1000 /workspace/scan-results 2>/dev/null || true
+          chown -R "${ACT_UID}:${ACT_GID}" /workspace/scan-results 2>/dev/null || true

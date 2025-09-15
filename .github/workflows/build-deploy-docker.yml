@@ -7,6 +7,11 @@ on:
         description: "Cache key for retrieving pre-downloaded dependencies"
         required: true
         type: string
+      scan_enabled:
+        description: "Run linting, vuln, config, secret scans, and SBOMs before push"
+        required: false
+        type: boolean
+        default: true
     secrets:
       DEV_API_KEY:
         description: "API key used for Wildfly DEV_MODE"
@@ -18,6 +23,15 @@ jobs:
     permissions:
       packages: write
       id-token: write
+      contents: read
+      security-events: write
+    outputs:
+      database_digest: ${{ steps.push-sign.outputs.database_digest }}
+      wildfly_digest: ${{ steps.push-sign.outputs.wildfly_digest }}
+      httpd_digest: ${{ steps.push-sign.outputs.httpd_digest }}
+    env:
+      IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
+      SERVICES: database,wildfly,httpd
     steps:
       - name: Checkout repository
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
@@ -50,6 +64,55 @@ jobs:
         working-directory: src
         run: ./build.sh --create-latest
 
+      - name: Lint Dockerfiles
+        if: inputs.scan_enabled
+        uses: hadolint/hadolint-action@3fc49fb50d59c6ab7917a2e4195dba633e515b29 # v3.1.0
+        with:
+          dockerfile: src/build
+          recursive: true
+          format: sarif
+          output-file: hadolint.sarif
+
+      - name: Upload linting results
+        if: inputs.scan_enabled
+        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
+        with:
+          sarif_file: hadolint.sarif
+
+      - name: Config scan
+        if: inputs.scan_enabled
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+        with:
+          scan-type: config
+          scanners: config
+          scan-ref: src/build
+          format: sarif
+          output: trivy-config.sarif
+          exit-code: '0'
+
+      - name: Upload config scan results
+        if: inputs.scan_enabled
+        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
+        with:
+          sarif_file: trivy-config.sarif
+
+      - name: Secrets scan
+        if: inputs.scan_enabled
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+        with:
+          scan-type: fs
+          scanners: secret
+          scan-ref: src/build
+          format: sarif
+          output: trivy-secrets.sarif
+          exit-code: '0'
+
+      - name: Upload secrets scan results
+        if: inputs.scan_enabled
+        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
+        with:
+          sarif_file: trivy-secrets.sarif
+
       - name: Login to GHCR
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
@@ -57,12 +120,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy and sign images
-        id: deploy-sign
+      - name: Push and sign images, capture digests
+        id: push-sign
         run: |
           set -euo pipefail
-          for SERVICE in database wildfly httpd; do
-            IMAGE="ghcr.io/aktin/notaufnahme-dwh-${SERVICE}"
+          for SERVICE in $SERVICES; do
+            IMAGE="${IMAGE_PREFIX}${SERVICE}"
             docker push --all-tags "$IMAGE"
             # capture the registry digest for :latest and sign ONLY that
             # pushing :latest again is very cheap because of content-addressable layers in ghcr
@@ -72,6 +135,7 @@ jobs:
               exit 1
             fi
             cosign sign --yes "${IMAGE}@${LATEST_DIGEST}"
+            echo "${SERVICE}_digest=${LATEST_DIGEST}" >> "$GITHUB_OUTPUT"
           done
 
       - name: Upload compose artifact

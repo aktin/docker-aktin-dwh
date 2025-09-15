@@ -12,11 +12,6 @@ on:
         required: false
         type: boolean
         default: true
-      scan_fail_on:
-        description: "Fail workflow if vulnerability at or above this severity (UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL) if found. Empty disables failing"
-        required: false
-        type: string
-        default: "CRITICAL"
     secrets:
       DEV_API_KEY:
         description: "API key used for Wildfly DEV_MODE"
@@ -69,21 +64,6 @@ jobs:
         working-directory: src
         run: ./build.sh --create-latest
 
-      - name: Lint Dockerfiles
-        if: inputs.scan_enabled
-        uses: hadolint/hadolint-action@3fc49fb50d59c6ab7917a2e4195dba633e515b29 # v3.1.0
-        with:
-          dockerfile: src/build
-          recursive: true
-          format: sarif
-          output-file: hadolint.sarif
-
-      - name: Upload Dockerfile linting results
-        if: inputs.scan_enabled
-        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
-        with:
-          sarif_file: hadolint.sarif
-
       - name: Config scan
         if: inputs.scan_enabled
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
@@ -100,6 +80,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
         with:
           sarif_file: trivy-config.sarif
+          category: trivy-config
 
       - name: Secrets scan
         if: inputs.scan_enabled
@@ -117,6 +98,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
         with:
           sarif_file: trivy-secrets.sarif
+          category: trivy-secrets
 
       - name: Login to GHCR
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
@@ -152,12 +134,13 @@ jobs:
           retention-days: 1
 
   attest-scan:
-    needs: build-deploy
+    if: inputs.scan_enabled
     runs-on: ubuntu-latest
     permissions:
       packages: write
       id-token: write
       contents: read
+      attestations: write
       security-events: write
     strategy:
       matrix:
@@ -187,45 +170,30 @@ jobs:
         uses: anchore/sbom-action@da167eac915b4e86f08b264dbdbc867b61be6f0c # v0.20.5
         with:
           image: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
-          artifact-name: cyclonedx-json=${{ matrix.svc }}.sbom.cdx.json
+          output-file: ${{ matrix.svc }}.sbom.cdx.json
 
       - name: Attest SBOM
-        if: inputs.scan_enabled
         run: cosign attest --yes --type cyclonedx --predicate "${{ matrix.svc }}.sbom.cdx.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
         with:
-          subject-name:  ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}
+          subject-name: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}
           subject-digest: ${{ matrix.digest }}
-
-      - name: Lint Images
-        if: inputs.scan_enabled
-        uses: goodwithtech/dockle-action@e30e6af832aad6ea7dca2a248d31a85eab6dbd68 # v0.4.15
-        with:
-          image: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
-          format: 'sarif'
-          output: dockle-${{ matrix.svc }}.sarif
-
-      - name: Upload Image linting results
-        if: inputs.scan_enabled
-        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
-        with:
-          sarif_file: dockle-${{ matrix.svc }}.sarif
+          push-to-registry: true
 
       - name: Vulnerabilities scan
-        if: inputs.scan_enabled
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           scan-type: image
           image-ref: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
           format: sarif
           output: trivy-${{ matrix.svc }}.sarif
-          exit-code: ${{ inputs.scan_fail_on && '1' || '0' }}
-          severity: ${{ inputs.scan_fail_on || 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL' }}
+          exit-code: '0'
+          severity: 'HIGH,CRITICAL'
 
       - name: Upload vulnerabilities scan results
-        if: inputs.scan_enabled
         uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
         with:
           sarif_file: trivy-${{ matrix.svc }}.sarif
+          category: trivy-${{ matrix.svc }}

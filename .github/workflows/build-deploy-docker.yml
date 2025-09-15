@@ -12,6 +12,11 @@ on:
         required: false
         type: boolean
         default: true
+      scan_fail_on:
+        description: "Fail workflow if vulnerability at or above this severity (UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL) if found. Empty disables failing"
+        required: false
+        type: string
+        default: "CRITICAL"
     secrets:
       DEV_API_KEY:
         description: "API key used for Wildfly DEV_MODE"
@@ -73,7 +78,7 @@ jobs:
           format: sarif
           output-file: hadolint.sarif
 
-      - name: Upload linting results
+      - name: Upload Dockerfile linting results
         if: inputs.scan_enabled
         uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
         with:
@@ -145,3 +150,82 @@ jobs:
           path: src/build/compose.yml
           if-no-files-found: error
           retention-days: 1
+
+  attest-scan:
+    needs: build-deploy
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      id-token: write
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        include:
+          - svc: database
+            digest: ${{ needs.build-deploy.outputs.database_digest }}
+          - svc: wildfly
+            digest: ${{ needs.build-deploy.outputs.wildfly_digest }}
+          - svc: httpd
+            digest: ${{ needs.build-deploy.outputs.httpd_digest }}
+    env:
+      IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
+
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+
+      - name: Login to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SBOM
+        if: inputs.scan_enabled
+        uses: anchore/sbom-action@da167eac915b4e86f08b264dbdbc867b61be6f0c # v0.20.5
+        with:
+          image: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
+          artifact-name: cyclonedx-json=${{ matrix.svc }}.sbom.cdx.json
+
+      - name: Attest SBOM
+        if: inputs.scan_enabled
+        run: cosign attest --yes --type cyclonedx --predicate "${{ matrix.svc }}.sbom.cdx.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        with:
+          subject-name:  ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}
+          subject-digest: ${{ matrix.digest }}
+
+      - name: Lint Images
+        if: inputs.scan_enabled
+        uses: goodwithtech/dockle-action@e30e6af832aad6ea7dca2a248d31a85eab6dbd68 # v0.4.15
+        with:
+          image: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
+          format: 'sarif'
+          output: dockle-${{ matrix.svc }}.sarif
+
+      - name: Upload Image linting results
+        if: inputs.scan_enabled
+        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
+        with:
+          sarif_file: dockle-${{ matrix.svc }}.sarif
+
+      - name: Vulnerabilities scan
+        if: inputs.scan_enabled
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
+          format: sarif
+          output: trivy-${{ matrix.svc }}.sarif
+          exit-code: ${{ inputs.scan_fail_on && '1' || '0' }}
+          severity: ${{ inputs.scan_fail_on || 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL' }}
+
+      - name: Upload vulnerabilities scan results
+        if: inputs.scan_enabled
+        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
+        with:
+          sarif_file: trivy-${{ matrix.svc }}.sarif

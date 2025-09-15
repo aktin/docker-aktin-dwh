@@ -5,8 +5,9 @@ on:
 
 jobs:
   test-build:
-    uses: ./.github/workflows/build-deploy-docker.yml.yml
+    uses: ./.github/workflows/build-deploy-docker.yml
     with:
       cache_key: 'test-build'
+      image_prefix: 'ghcr.io/aktin/sandbox-'
     secrets:
       DEV_API_KEY: ${{ secrets.DEV_API_KEY }}

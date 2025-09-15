@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: "CRITICAL"
+      image_prefix:
+        description: "Target registry prefix"
+        required: false
+        type: string
+        default: "ghcr.io/aktin/notaufnahme-dwh-"
     secrets:
       DEV_API_KEY:
         description: "API key used for Wildfly DEV_MODE"
@@ -35,7 +40,7 @@ jobs:
       wildfly_digest: ${{ steps.push-sign.outputs.wildfly_digest }}
       httpd_digest: ${{ steps.push-sign.outputs.httpd_digest }}
     env:
-      IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
+      IMAGE_PREFIX: ${{ inputs.image_prefix }}
       SERVICES: database,wildfly,httpd
     steps:
       - name: Checkout repository

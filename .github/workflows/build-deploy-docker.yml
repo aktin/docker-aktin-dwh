@@ -1,5 +1,9 @@
 name: Build and Deploy Docker Images
 
+# TODO: add linting
+# TODO: do scan/linting before push, fail job if above treshold
+# --> add matrix to build-deploy
+
 on:
   workflow_call:
     inputs:
@@ -175,12 +179,18 @@ jobs:
       - name: Attest SBOM
         run: cosign attest --yes --type cyclonedx --predicate "${{ matrix.svc }}.sbom.cdx.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
 
-      - name: Attest build provenance
+      - name: Generate provenance JSON
+        id: prov
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
         with:
           subject-name: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}
           subject-digest: ${{ matrix.digest }}
-          push-to-registry: true
+
+      - name: Save provenance.json
+        run: cp "${{ steps.prov.outputs.predicate }}" "${{ matrix.svc }}.prov.json"
+
+      - name: Attest build provenance
+        run: cosign attest --yes --type slsaprovenance --predicate "${{ matrix.svc }}.prov.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
 
       - name: Vulnerabilities scan
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1

@@ -1,0 +1,12 @@
+name: Test Build and Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-build:
+    uses: ./.github/workflows/build-deploy-docker.yml.yml
+    with:
+      cache_key: 'test-build'
+    secrets:
+      DEV_API_KEY: ${{ secrets.DEV_API_KEY }}

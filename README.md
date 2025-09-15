@@ -22,48 +22,7 @@ docker compose up -d
 ```
 The system will be available at `http://localhost` once all containers have started. The AKTIN I2B2 can be reached at  `http://localhost/webclient` and the DWH manager at `http://localhost/aktin/admin`. For [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/), the property files must be copied manually into the `aktin_config` folder. See [this issue]([https://github.com/aktin/docker-aktin-dwh/issues/6](https://github.com/aktin/docker-aktin-dwh/issues/10)) for details.
 
-### Verification of container signatures
-All our Docker images are signed using [Cosign](https://docs.sigstore.dev/cosign/signing/overview/) with keyless signing. You can check that what you run matches what we built:
-
-1. Check cosign installation. If needed, install it following [this instruction](https://docs.sigstore.dev/cosign/system_config/installation/).
-```bash
-cosign version
-
-# Example output:
-# GitVersion:    v2.5.3
-```
-
-2. Get the image digest 
-
-Pull the image first:
-```bash
-docker pull ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
-```
-
-Inspect to find the exact digest:
-```bash
-docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
-
-# Example output:
-# ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
-```
-
-3. Verify the signature. If valid, you’ll see output confirming the signature and the trusted GitHub repo. For more information, refer to the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) and the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/). Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
-```bash
-cosign verify \
---certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
---certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
-
-# Example output:
-# Verification for ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd --
-# The following checks were performed on each of these signatures:
-#   - The cosign claims were validated
-#   - Existence of the claims in the transparency log was verified offline
-#   - The code-signing certificate was verified using trusted certificate authority certificates
-```
-
-### Running Multiple AKTIN Instances on the Same Server
+### Running Multiple AKTIN Instances on the same Server
 
 To run multiple AKTIN instances on the same server, place instances of `compose.yml` in separate folders and assign unique ports per instance (`HTTP_PORT`). Docker Compose will automatically use the folder name as the project name, isolating container names, networks, and volumes. You can configure the individual instances using `.env` files:
 
@@ -87,6 +46,61 @@ docker compose up -d
 # Instance 2
 cd /opt/docker-deploy/aktin2
 docker compose up -d
+```
+
+### Verification of Container Signatures
+All our Docker images are cryptographically signed using [Cosign](https://docs.sigstore.dev/cosign/signing/overview/)  and come with attached SBOMs (CycloneDX) and build provenance attestations (SLSA). You can check that what you run matches what we built:
+
+#### Prerequisites
+Check cosign installation. If needed, install it following [this instruction](https://docs.sigstore.dev/cosign/system_config/installation/).
+```bash
+cosign version
+
+# Example output:
+# GitVersion:    v2.5.3
+```
+
+#### 1. Get the Image Digest
+Pull the image first:
+```bash
+docker pull ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
+```
+
+Inspect to find the exact digest:
+```bash
+docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
+
+# Example output:
+# ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+```
+
+#### 2. Verify Image Signature
+Check that the image was built by our GitHub Actions workflow and signed via Sigstore. If valid, you’ll see output confirming the signature and the trusted GitHub Repo. For more information, refer to the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) and the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/). Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
+```bash
+cosign verify \
+--certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
+--certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+```
+
+#### 3. Inspect SBOM
+Each image has an attached Software Bill of Materials. The following command prints the SBOM in JSON. This prints the CycloneDX SBOM in JSON. You can then parse it with SBOM tooling or import it into vulnerability scanners.
+```bash
+cosign verify-attestation \
+--type cyclonedx \
+--certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
+--certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+```
+
+#### 4. Verify Build Provenance
+Build provenance attestation proves the image was built from scratch in GitHub. The result will show the Git commit and build metadata. You can then trace the build back to our public repository.
+```bash
+cosign verify-attestation \
+--type slsaprovenance \
+--certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
+--certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
 ```
 
 ## For Developers

@@ -80,3 +80,4 @@ jobs:
           name: compose-yml
           path: src/build/compose.yml
           if-no-files-found: error
+          retention-days: 1

@@ -138,6 +138,7 @@ jobs:
           retention-days: 1
 
   attest-scan:
+    needs: build-deploy
     if: inputs.scan_enabled
     runs-on: ubuntu-latest
     permissions:

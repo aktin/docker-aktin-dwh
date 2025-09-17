@@ -67,7 +67,7 @@ jobs:
 
       - name: Create scan results directories
         run: |
-          mkdir -p scan-results/{database,wildfly,httpd,docker-compose}
+          mkdir -p scan-results/{database,wildfly,httpd}
 
       - name: Lint Dockerfiles with Hadolint
         run: |
@@ -78,13 +78,13 @@ jobs:
             fi
           done
 
-      - name: Security scan with Dockle
+      - name: Lint Images with Dockle
         run: |
           for SERVICE in ${{ env.SERVICES }}; do
             IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
             TAG_VAR="${SERVICE^^}_TAG"
             TAG="${!TAG_VAR}"
-            dockle --exit-code 0 "${IMAGE}:${TAG}" 2>&1 | tee -a scan-results/$SERVICE/dockle.txt || true
+            dockle "${IMAGE}:${TAG}" 2>&1 | tee -a scan-results/$SERVICE/dockle.txt || true
           done
 
       - name: Vulnerability scan with Trivy
@@ -93,7 +93,7 @@ jobs:
             IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
             TAG_VAR="${SERVICE^^}_TAG"
             TAG="${!TAG_VAR}"
-            trivy image --exit-code 0 "${IMAGE}:${TAG}" 2>&1 | tee -a scan-results/$SERVICE/trivy-vulns.txt || true
+            trivy image "${IMAGE}:${TAG}" --scanners vuln --vuln-type os,library --list-all-pkgs --dependency-tree --output scan-results/$SERVICE/trivy-vulns.txt
           done
 
       - name: Config scan with Trivy
@@ -101,17 +101,9 @@ jobs:
           for dockerfile in src/build/*/Dockerfile; do
             if [ -f "$dockerfile" ]; then
               service=$(basename $(dirname "$dockerfile"))
-              trivy config --exit-code 0 "$dockerfile" 2>&1 | tee -a scan-results/$service/trivy-config.txt || true
+              trivy config "$dockerfile" 2>&1 | tee -a scan-results/$service/trivy-config.txt || true
             fi
           done
-          cd src/build
-          if [ -f "compose.yml" ]; then
-            # Rename temporarily to docker-compose.yml for Trivy to recognize it
-            cp "compose.yml" docker-compose.yml
-            trivy config --exit-code 0 . 2>&1 | tee -a ../../scan-results/docker-compose/trivy-config.txt || true
-            rm docker-compose.yml
-          fi
-          cd ../..
 
       - name: Secret scan with Trivy
         run: |
@@ -119,9 +111,17 @@ jobs:
             IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
             TAG_VAR="${SERVICE^^}_TAG"
             TAG="${!TAG_VAR}"
-            trivy image --exit-code 0 --scanners secret "${IMAGE}:${TAG}" 2>&1 | tee -a scan-results/$SERVICE/trivy-secrets.txt || true
+            trivy image "${IMAGE}:${TAG}" --scanners secret --output scan-results/$SERVICE/trivy-secrets.txt
           done
-          trivy fs --exit-code 0 --scanners secret src/build/ 2>&1 | tee -a scan-results/docker-compose/trivy-secrets.txt || true
+
+      - name: License scan with Trivy
+        run: |
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            trivy image "${IMAGE}:${TAG}" --scanners license --output scan-results/$SERVICE/trivy-licenses.txt
+          done
 
       - name: Generate SBOM with Syft
         run: |

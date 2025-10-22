@@ -1,0 +1,138 @@
+name: Test Docker Build & Security Scan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-scan:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
+      SERVICES: "database wildfly httpd"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          fetch-depth: 1
+
+      - name: Setup Java
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Maven
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y maven
+
+      - name: Install security tools
+        run: |
+          # Install Hadolint
+          wget -O /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+          chmod +x /tmp/hadolint
+          sudo mv /tmp/hadolint /usr/local/bin/
+
+          # Install Dockle
+          VERSION=$(curl -s https://api.github.com/repos/goodwithtech/dockle/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+          wget -O /tmp/dockle.tar.gz https://github.com/goodwithtech/dockle/releases/download/v${VERSION}/dockle_${VERSION}_Linux-64bit.tar.gz
+          tar zxf /tmp/dockle.tar.gz -C /tmp
+          sudo mv /tmp/dockle /usr/local/bin/
+
+          # Install Trivy
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+          # Install Syft
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Build Docker images
+        env:
+          DEV_API_KEY: "test-key"
+          DOCKER_BUILDKIT: "0"
+        working-directory: src
+        run: |
+          ./build.sh
+
+      - name: Get image tags
+        id: get-tags
+        run: |
+          echo "WILDFLY_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-wildfly | head -1)" >> $GITHUB_ENV
+          echo "HTTPD_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-httpd | head -1)" >> $GITHUB_ENV
+          echo "DATABASE_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-database | head -1)" >> $GITHUB_ENV
+
+      - name: Create scan results directories
+        run: |
+          mkdir -p scan-results/{database,wildfly,httpd}
+
+      - name: Lint Dockerfiles with Hadolint
+        run: |
+          for dockerfile in src/build/*/Dockerfile; do
+            if [ -f "$dockerfile" ]; then
+              service=$(basename $(dirname "$dockerfile"))
+              hadolint "$dockerfile" 2>&1 | tee -a scan-results/$service/hadolint.txt || true
+            fi
+          done
+
+      - name: Lint Images with Dockle
+        run: |
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            dockle "${IMAGE}:${TAG}" 2>&1 | tee -a scan-results/$SERVICE/dockle.txt || true
+          done
+
+      - name: Vulnerability scan with Trivy
+        run: |
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            trivy image "${IMAGE}:${TAG}" --scanners vuln --vuln-type os,library --list-all-pkgs --dependency-tree --output scan-results/$SERVICE/trivy-vulns.txt
+          done
+
+      - name: Config scan with Trivy
+        run: |
+          for dockerfile in src/build/*/Dockerfile; do
+            if [ -f "$dockerfile" ]; then
+              service=$(basename $(dirname "$dockerfile"))
+              trivy config "$dockerfile" 2>&1 | tee -a scan-results/$service/trivy-config.txt || true
+            fi
+          done
+
+      - name: Secret scan with Trivy
+        run: |
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            trivy image "${IMAGE}:${TAG}" --scanners secret --output scan-results/$SERVICE/trivy-secrets.txt
+          done
+
+      - name: License scan with Trivy
+        run: |
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            trivy image "${IMAGE}:${TAG}" --scanners license --output scan-results/$SERVICE/trivy-licenses.txt
+          done
+
+      - name: Generate SBOM with Syft
+        run: |
+          for SERVICE in ${{ env.SERVICES }}; do
+            IMAGE="${{ env.IMAGE_PREFIX }}${SERVICE}"
+            TAG_VAR="${SERVICE^^}_TAG"
+            TAG="${!TAG_VAR}"
+            syft "${IMAGE}:${TAG}" -o cyclonedx-xml > "scan-results/$SERVICE/${SERVICE}-sbom.xml"
+          done
+
+      - name: Copy results to host
+        run: |
+          cp -r scan-results /workspace/scan-results 2>/dev/null || true
+          chown -R "${ACT_UID}:${ACT_GID}" /workspace/scan-results 2>/dev/null || true

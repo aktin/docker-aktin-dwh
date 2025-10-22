@@ -1,4 +1,4 @@
-name: Check Base Container Update
+name: Check Base Container
 
 on:
   workflow_call:
@@ -31,7 +31,7 @@ jobs:
       update: ${{ steps.compare-digest.outputs.update }}
       artifact_name: ${{ steps.read-version.outputs.artifact_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           sparse-checkout: |
             src/resources/versions
@@ -85,7 +85,7 @@ jobs:
 
       - name: Upload updated digest artifact
         if: env.CHANGED == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ steps.read-version.outputs.artifact_name }}
           path: ${{ env.DIGEST_FILE }}

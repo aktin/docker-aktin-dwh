@@ -137,7 +137,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  attest-scan:
+  sbom-scan:
     needs: build-deploy
     if: inputs.scan_enabled
     runs-on: ubuntu-latest
@@ -145,7 +145,6 @@ jobs:
       packages: write
       id-token: write
       contents: read
-      attestations: write
       security-events: write
     strategy:
       matrix:
@@ -180,19 +179,6 @@ jobs:
       - name: Attest SBOM
         run: cosign attest --yes --type cyclonedx --predicate "${{ matrix.svc }}.sbom.cdx.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
 
-      - name: Generate provenance JSON
-        id: prov
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
-        with:
-          subject-name: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}
-          subject-digest: ${{ matrix.digest }}
-
-      - name: Save provenance.json
-        run: cp "${{ steps.prov.outputs.predicate }}" "${{ matrix.svc }}.prov.json"
-
-      - name: Attest build provenance
-        run: cosign attest --yes --type slsaprovenance --predicate "${{ matrix.svc }}.prov.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
-
       - name: Vulnerabilities scan
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
@@ -208,3 +194,26 @@ jobs:
         with:
           sarif_file: trivy-${{ matrix.svc }}.sarif
           category: trivy-${{ matrix.svc }}
+
+  provenance:
+    needs: build-deploy
+    if: inputs.scan_enabled
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+      attestations: write
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - svc: database
+            digest: ${{ needs.build-deploy.outputs.database_digest }}
+          - svc: wildfly
+            digest: ${{ needs.build-deploy.outputs.wildfly_digest }}
+          - svc: httpd
+            digest: ${{ needs.build-deploy.outputs.httpd_digest }}
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ghcr.io/aktin/notaufnahme-dwh-${{ matrix.svc }}
+      digest: ${{ matrix.digest }}

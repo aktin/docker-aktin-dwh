@@ -115,7 +115,7 @@ jobs:
         id: push-sign
         run: |
           set -euo pipefail
-          for SERVICE in $SERVICES; do
+          for SERVICE in ${SERVICES//,/ }; do
             IMAGE="${IMAGE_PREFIX}${SERVICE}"
             docker push --all-tags "$IMAGE"
             # capture the registry digest for :latest and sign ONLY that

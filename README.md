@@ -97,10 +97,16 @@ ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b957
 Build provenance attestation proves the image was built from scratch in GitHub. The result will show the Git commit and build metadata. You can then trace the build back to our public repository.
 ```bash
 cosign verify-attestation \
---type slsaprovenance \
---certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
---certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+--type https://slsa.dev/provenance/v0.2 \
+--certificate-identity "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v2.1.0" \
+--certificate-oidc-issuer https://token.actions.githubusercontent.com \
 ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+```
+
+#### Attention
+The SBOM and build provenance attestations are stored as in-toto DSSE envelopes, where the actual payload is base64-encoded inside a JSON wrapper. You can decode and inspect the raw payload with:
+```bash
+cosign verify-attestation <image>@<digest> | jq -r '.payload' | base64 -d | jq
 ```
 
 ## For Developers

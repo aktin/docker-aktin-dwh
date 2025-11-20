@@ -207,7 +207,7 @@ jobs:
         with:
           image: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
           output-file: ${{ matrix.svc }}.sbom.xml
-          format: cyclonedx
+          format: cyclonedx-json
           upload-artifact: false
 
       - name: Attest SBOM

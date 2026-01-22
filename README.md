@@ -79,8 +79,7 @@ Check that the image was built by our GitHub Actions workflow and signed via Sig
 ```bash
 cosign verify \
 --certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
---certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+--certificate-oidc-issuer "https://token.actions.githubusercontent.com" <docker inspect output>
 ```
 
 #### 3. Inspect SBOM
@@ -89,8 +88,7 @@ Each image has an attached Software Bill of Materials. The following command pri
 cosign verify-attestation \
 --type cyclonedx \
 --certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
---certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+--certificate-oidc-issuer "https://token.actions.githubusercontent.com" <docker inspect output>
 ```
 
 #### 4. Verify Build Provenance
@@ -99,14 +97,13 @@ Build provenance attestation proves the image was built from scratch in GitHub. 
 cosign verify-attestation \
 --type https://slsa.dev/provenance/v0.2 \
 --certificate-identity "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v2.1.0" \
---certificate-oidc-issuer https://token.actions.githubusercontent.com \
-ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+--certificate-oidc-issuer https://token.actions.githubusercontent.com <docker inspect output>
 ```
 
 #### Attention
-The SBOM and build provenance attestations are stored as in-toto DSSE envelopes, where the actual payload is base64-encoded inside a JSON wrapper. You can decode and inspect the raw payload with:
+The SBOM and build provenance attestations are stored as in-toto DSSE envelopes, where the actual payload is base64-encoded inside a JSON wrapper. You can decode and inspect the raw payload by appending following snippet to the `cosign verify-attestation` commands:
 ```bash
-cosign verify-attestation <image>@<digest> | jq -r '.payload' | base64 -d | jq
+| jq -r '.payload' | base64 -d | jq
 ```
 
 ## For Developers

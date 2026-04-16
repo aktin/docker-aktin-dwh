@@ -25,17 +25,14 @@ ENV LANG=de_DE.UTF-8 \
     TZ=Europe/Berlin \
     DEV_MODE=false
 
-# Install locales (en_US as fallback) and tzdata
-RUN DEBIAN_FRONTEND=noninteractive apt-get update -qq && \
-    apt-get install -y -qq locales tzdata >> /var/log/setup.log 2>&1 && \
-    locale-gen ${LANG} en_US.UTF-8 && \
-    update-locale LANG=${LANG} && \
-    rm -rf /var/lib/apt/lists/*
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Install essential packages
-RUN DEBIAN_FRONTEND=noninteractive apt-get update -qq && \
-    apt-get install -y __UBUNTU_DEPENDENCIES__ wget >> /var/log/setup.log 2>&1 && \
-    rm -rf /var/lib/apt/lists/*
+# Install locales (en_US as fallback) and essential packages
+RUN apt-get update -qq  \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y locales tzdata __UBUNTU_DEPENDENCIES__ wget >> /var/log/setup.log 2>&1  \
+    && locale-gen ${LANG} en_US.UTF-8  \
+    && update-locale LANG=${LANG}  \
+    && rm -rf /var/lib/apt/lists/
 
 RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly
 

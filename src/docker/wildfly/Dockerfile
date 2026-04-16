@@ -29,7 +29,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Install locales (en_US as fallback) and essential packages
 RUN apt-get update -qq  \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y locales tzdata __UBUNTU_DEPENDENCIES__ wget >> /var/log/setup.log 2>&1  \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y locales tzdata __UBUNTU_DEPENDENCIES__ wget \
     && locale-gen ${LANG} en_US.UTF-8  \
     && update-locale LANG=${LANG}  \
     && rm -rf /var/lib/apt/lists/

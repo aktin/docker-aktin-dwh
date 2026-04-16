@@ -1,2 +1,7 @@
-Fixes:
-* Rebuilt Docker image to include [Debian package]((https://github.com/aktin/debian-dwh-pkg)) fix and resolve incompatibility between p21 import script and DWH GUI
+## New in this Release
+* Updated AKTIN Data Warehouse to version 1.7rc1
+* Added security_opt no-new-privileges:true for all containers
+
+## Fixes
+* Improved wildfly container metadata
+* Increased default memory from postgres docker to 256mb

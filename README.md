@@ -79,7 +79,8 @@ Check that the image was built by our GitHub Actions workflow and signed via Sig
 ```bash
 cosign verify \
 --certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
---certificate-oidc-issuer "https://token.actions.githubusercontent.com" <image@sha256:digest>
+--certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
 ```
 
 #### 3. Inspect SBOM
@@ -88,22 +89,18 @@ Each image has an attached Software Bill of Materials. The following command pri
 cosign verify-attestation \
 --type cyclonedx \
 --certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
---certificate-oidc-issuer "https://token.actions.githubusercontent.com" <image@sha256:digest>
+--certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
 ```
 
 #### 4. Verify Build Provenance
 Build provenance attestation proves the image was built from scratch in GitHub. The result will show the Git commit and build metadata. You can then trace the build back to our public repository.
 ```bash
 cosign verify-attestation \
---type https://slsa.dev/provenance/v0.2 \
---certificate-identity "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v2.1.0" \
---certificate-oidc-issuer https://token.actions.githubusercontent.com <image@sha256:digest>
-```
-
-#### Attention
-The SBOM and build provenance are published as in-toto attestations wrapped in DSSE envelopes. The actual attestation content is base64-encoded in the `payload` field of the JSON output. You can download the attestations directly from the OCI registry and decode the embedded payload using the following command. The resulting file will contain both the SBOM and the SLSA provenance:
-```bash
-cosign download attestation <image@sha256:digest> | jq -r '.payload' | base64 -d | jq > output.json
+--type slsaprovenance \
+--certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
+--certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
 ```
 
 ## For Developers

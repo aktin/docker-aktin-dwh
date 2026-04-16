@@ -9,7 +9,6 @@
 FROM ubuntu:__UBUNTU_VERSION__
 
 ARG BUILD_TIME
-ARG DEV_MODE=false
 
 LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de" \
@@ -20,20 +19,21 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.title="AKTIN Wildfly" \
     org.opencontainers.image.description="Java application server with AKTIN Data Warehouse"
 
-# Prevent interactive prompts during installation
-ENV DEBIAN_FRONTEND=noninteractive
+# Default runtime configuration (can be overridden via docker run / compose)
+ENV LANG=de_DE.UTF-8 \
+    LC_ALL=de_DE.UTF-8 \
+    TZ=Europe/Berlin \
+    DEV_MODE=false
 
-# Set German Locale (required for running the AKTIN DWH) with logging
-ENV LANG=de_DE.UTF-8
-ENV LANGUAGE=de_DE:en
-ENV LC_ALL=de_DE.UTF-8
-RUN apt-get update -qq && \
-    apt-get install -y -qq locales >> /var/log/setup.log 2>&1 && \
-    locale-gen de_DE.UTF-8 && \
-    update-locale LANG=de_DE.UTF-8
+# Install locales (en_US as fallback) and tzdata
+RUN DEBIAN_FRONTEND=noninteractive apt-get update -qq && \
+    apt-get install -y -qq locales tzdata >> /var/log/setup.log 2>&1 && \
+    locale-gen ${LANG} en_US.UTF-8 && \
+    update-locale LANG=${LANG} && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install essential packages with logging and clean up APT cache
-RUN apt-get update -qq && \
+# Install essential packages
+RUN DEBIAN_FRONTEND=noninteractive apt-get update -qq && \
     apt-get install -y -qq __UBUNTU_DEPENDENCIES__ wget >> /var/log/setup.log 2>&1 && \
     rm -rf /var/lib/apt/lists/*
 

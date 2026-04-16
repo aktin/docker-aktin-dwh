@@ -43,6 +43,9 @@ services:
       DB_HOST: ${DB_HOST:-database}
       DB_PORT: ${DB_PORT:-5432}
       DEV_MODE: ${DEV_MODE:-true}
+      LANG: ${LANG:-de_DE.UTF-8}
+      LC_ALL: ${LC_ALL:-de_DE.UTF-8}
+      TZ: ${TZ:-Europe/Berlin}
     volumes:
       - aktin_config:/etc/aktin
       - aktin_data:/var/lib/aktin

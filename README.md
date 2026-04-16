@@ -102,6 +102,11 @@ cosign verify-attestation \
 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
 ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
 ```
+#### Attention
+The SBOM and build provenance are published as in-toto attestations wrapped in DSSE envelopes. The actual attestation content is base64-encoded in the `payload` field of the JSON output. You can download the attestations directly from the OCI registry and decode the embedded payload using the following command. The resulting file will contain both the SBOM and the SLSA provenance:
+```bash
+cosign download attestation <image@sha256:digest> | jq -r '.payload' | base64 -d | jq > output.json
+```
 
 ## For Developers
 If you want to build the containers yourself or contribute to development:

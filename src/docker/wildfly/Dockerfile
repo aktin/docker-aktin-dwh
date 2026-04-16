@@ -11,7 +11,7 @@ FROM ubuntu:__UBUNTU_VERSION__
 ARG BUILD_TIME
 
 LABEL org.opencontainers.image.created=${BUILD_TIME} \
-    org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de" \
+    org.opencontainers.image.authors="akombeiz@ukaachen.de, shuening@ukaachen.de, skurka@ukaachen.de, hheidemeyer@ukaachen.de" \
     org.opencontainers.image.source="https://github.com/aktin/docker-aktin-dwh" \
     org.opencontainers.image.version="__DWH_GITHUB_TAG__" \
     org.opencontainers.image.revision="__WILDFLY_CONTAINER_REVISION__" \
@@ -34,7 +34,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update -qq && \
 
 # Install essential packages
 RUN DEBIAN_FRONTEND=noninteractive apt-get update -qq && \
-    apt-get install -y -qq __UBUNTU_DEPENDENCIES__ wget >> /var/log/setup.log 2>&1 && \
+    apt-get install -y __UBUNTU_DEPENDENCIES__ wget >> /var/log/setup.log 2>&1 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly

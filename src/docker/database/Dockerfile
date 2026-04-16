@@ -11,7 +11,7 @@ FROM postgres:__POSTGRESQL_VERSION__
 ARG BUILD_TIME
 
 LABEL org.opencontainers.image.created=${BUILD_TIME} \
-    org.opencontainers.image.authors="shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de" \
+    org.opencontainers.image.authors="akombeiz@ukaachen.de, shuening@ukaachen.de, skurka@ukaachen.de" \
     org.opencontainers.image.source="https://github.com/aktin/docker-aktin-dwh" \
     org.opencontainers.image.version="__DWH_GITHUB_TAG__" \
     org.opencontainers.image.revision="__DATABASE_CONTAINER_REVISION__" \

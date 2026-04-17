@@ -2,7 +2,7 @@
 #--------------------------------------
 # Script Name:  entrypoint.sh
 # Author:       akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
-# Purpose:      Configures the WildFly server for the AKTIN emergency department system.
+# Purpose:      Configures which aktin.properties to use for the AKTIN Data Warehouse
 #--------------------------------------
 
 set -e

@@ -1,9 +1,8 @@
 # --------------------------------------
 # PostgreSQL Database Container for i2b2/AKTIN
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
-# Purpose:      This container extends the official PostgreSQL image to provide a pre-configured
-#               database environment for i2b2 and AKTIN. It includes schema initialization,
-#               metadata setup, and required updates for the emergency department system.
+# Authors: akombeiz@ukaachen.de, shuening@ukaachen.de, skurka@ukaachen.de
+# Purpose: This container extends the official PostgreSQL image to provide a pre-configured database environment for i2b2 and AKTIN.
+# It includes schema initialization, metadata setup, and required updates for the emergency department system.
 # --------------------------------------
 
 FROM postgres:__POSTGRESQL_VERSION__
@@ -35,4 +34,3 @@ RUN cat \
     > /docker-entrypoint-initdb.d/init.sql \
     && rm -rf /sql.d/*
 
-WORKDIR /

@@ -1,8 +1,7 @@
 # --------------------------------------
 # Apache Web Server for i2b2/AKTIN
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de
-# Purpose:      Provides web interface for i2b2 with PHP support and reverse proxy
-#               configuration for AKTIN emergency department system integration.
+# Authors: akombeiz@ukaachen.de, shuening@ukaachen.de, skurka@ukaachen.de
+# Purpose: Provides web interface for i2b2 with PHP support and reverse proxy configuration for AKTIN emergency department system integration
 # --------------------------------------
 
 FROM php:__APACHE_VERSION__

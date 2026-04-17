@@ -1,9 +1,8 @@
 # --------------------------------------
 # WildFly Application Server for i2b2/AKTIN
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
-# Purpose:      Provides Java application server environment with i2b2 and AKTIN components
-#               along with Python and R data processing capabilities for the emergency
-#               department system. Includes German locale support and security configurations.
+# Authors: akombeiz@ukaachen.de, shuening@ukaachen.de, skurka@ukaachen.de, hheidemeyer@ukaachen.de
+# Purpose: Provides Java application server environment with i2b2 and AKTIN components along with Python and R data processing capabilities for
+# the emergency department system Includes German locale support and security configurations
 # --------------------------------------
 
 FROM ubuntu:__UBUNTU_VERSION__
@@ -23,7 +22,9 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
 ENV LANG=de_DE.UTF-8 \
     LC_ALL=de_DE.UTF-8 \
     TZ=Europe/Berlin \
-    DEV_MODE=false
+    DEV_MODE=false \
+    DB_HOST=database \
+    DB_PORT=5432
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 

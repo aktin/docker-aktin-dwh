@@ -26,13 +26,15 @@ ENV LANG=de_DE.UTF-8 \
     DB_HOST=database \
     DB_PORT=5432
 
+# Configure the timezone non-interactively
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# Switch to regional German mirrors
+RUN sed -i 's/archive.ubuntu.com/de.archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+
 # Install locales (en_US as fallback) and essential packages
-RUN apt-get update -qq  \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y locales tzdata __UBUNTU_DEPENDENCIES__ wget \
-    && locale-gen ${LANG} en_US.UTF-8  \
-    && update-locale LANG=${LANG}  \
+RUN apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends locales-all tzdata __UBUNTU_DEPENDENCIES__ wget \
     && rm -rf /var/lib/apt/lists/
 
 RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly

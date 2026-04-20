@@ -8,18 +8,21 @@ A containerized deployment of the AKTIN emergency department system using Docker
 
 ## Installation for Users
 
-1. Download the compose file:
+1. Download the [compose file](https://github.com/aktin/docker-aktin-dwh/releases/latest/download/compose.yml):
 ```bash
 curl -LO https://github.com/aktin/docker-aktin-dwh/releases/latest/download/compose.yml
 ```
+
 2. In the folder of the `compose.yml` script create a secret file with a strong password:
 ```bash
 echo 'mysecretpassword' > secret.txt
 ```
+
 3. Start the containers:
-```
+```bash
 docker compose up -d
 ```
+
 The system will be available at `http://localhost` once all containers have started. The AKTIN I2B2 can be reached at  `http://localhost/webclient` and the DWH manager at `http://localhost/aktin/admin`. For [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/), the property files must be copied manually into the `aktin_config` folder. See [this issue]([https://github.com/aktin/docker-aktin-dwh/issues/6](https://github.com/aktin/docker-aktin-dwh/issues/10)) for details.
 
 ### Running Multiple AKTIN Instances on the same Server
@@ -63,24 +66,43 @@ cosign version
 #### 1. Get the Image Digest
 Pull the image first:
 ```bash
-docker pull ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
+docker pull ghcr.io/aktin/notaufnahme-dwh-<service>:<tag>
+
+# Example command:
+# docker pull ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
 ```
 
 Inspect to find the exact digest:
 ```bash
-docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
+docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh-<service>:<tag>
+
+# Example command:
+# docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh-database:1.6rc1-2-docker3
 
 # Example output:
-# ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+# ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d
 ```
 
 #### 2. Verify Image Signature
 Check that the image was built by our GitHub Actions workflow and signed via Sigstore. If valid, you’ll see output confirming the signature and the trusted GitHub Repo. For more information, refer to the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) and the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/). Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
 ```bash
 cosign verify \
---certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
+--certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
+
+# Example command:
+# cosign verify \
+# --certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
+# --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+# ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d
+
+# Example output:
+# Verification for ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d --
+# The following checks were performed on each of these signatures:
+#   - The cosign claims were validated
+#   - Existence of the claims in the transparency log was verified offline
+#   - The code-signing certificate was verified using trusted certificate authority certificates
 ```
 
 #### 3. Inspect SBOM
@@ -88,9 +110,19 @@ Each image has an attached Software Bill of Materials. The following command pri
 ```bash
 cosign verify-attestation \
 --type cyclonedx \
---certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
+--certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
+
+# Example command:
+# cosign verify-attestation \
+# --type cyclonedx \
+# --certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
+# --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+# ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d
+
+# Example output:
+# {"payloadType":"application/vnd.in-toto+json","payload":"eyJfdHlwZSI...","signatures":[{"keyid":"","sig":"MEYCIQC..."}]}
 ```
 
 #### 4. Verify Build Provenance
@@ -98,14 +130,28 @@ Build provenance attestation proves the image was built from scratch in GitHub. 
 ```bash
 cosign verify-attestation \
 --type slsaprovenance \
---certificate-identity "https://github.com/aktin/docker-aktin-dwh/.github/workflows/build-deploy-docker.yml@refs/heads/main" \
+--certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-ghcr.io/aktin/notaufnahme-dwh-database@sha256:dff86c69b2042df7259d778ab76799b95789e4cebd1a81fda1fd47444b724ecd
+ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
+
+# Example command:
+# cosign verify-attestation \
+# --type slsaprovenance \
+# --certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
+# --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+# ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d
+
+# Example output:
+# {"payloadType":"application/vnd.in-toto+json","payload":"eyJfdHlwZSI...","signatures":[{"keyid":"","sig":"MEUCIQC..."}]}
 ```
+
 #### Attention
 The SBOM and build provenance are published as in-toto attestations wrapped in DSSE envelopes. The actual attestation content is base64-encoded in the `payload` field of the JSON output. You can download the attestations directly from the OCI registry and decode the embedded payload using the following command. The resulting file will contain both the SBOM and the SLSA provenance:
 ```bash
-cosign download attestation <image@sha256:digest> | jq -r '.payload' | base64 -d | jq > output.json
+cosign download attestation ghcr.io/aktin/notaufnahme-dwh-<service>@<digest> | jq -r '.payload' | base64 -d | jq > output.json
+
+# Example command:
+# cosign download attestation ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d | jq -r '.payload' | base64 -d | jq > output.json
 ```
 
 ## For Developers

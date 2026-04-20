@@ -9,33 +9,24 @@ jobs:
   prepare:
     uses: ./.github/workflows/prepare-cache.yml
 
-  check-postgres:
-    needs: [ prepare ]
+  check-updates:
+    strategy:
+      matrix:
+        include:
+          - container: postgres
+            key: POSTGRESQL_VERSION
+          - container: ubuntu
+            key: UBUNTU_VERSION
+          - container: php
+            key: APACHE_VERSION
     uses: ./.github/workflows/check-container-update.yml
     with:
-      container: postgres
-      version_key: POSTGRESQL_VERSION
-
-  check-ubuntu:
-    needs: [ prepare ]
-    uses: ./.github/workflows/check-container-update.yml
-    with:
-      container: ubuntu
-      version_key: UBUNTU_VERSION
-
-  check-php:
-    needs: [ prepare ]
-    uses: ./.github/workflows/check-container-update.yml
-    with:
-      container: php
-      version_key: APACHE_VERSION
+      container: ${{matrix.container}}
+      version_key: ${{matrix.key}}
 
   build-deploy:
-    needs: [ prepare, check-postgres, check-ubuntu, check-php ]
-    if: |
-      needs.check-postgres.outputs.update == 'true' ||
-      needs.check-ubuntu.outputs.update == 'true' ||
-      needs.check-php.outputs.update == 'true'
+    needs: [ prepare, check-updates ]
+    if: contains(needs.check-updates.outputs.*.update, 'true')
     uses: ./.github/workflows/build-deploy-docker.yml
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}
@@ -43,16 +34,14 @@ jobs:
       DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
 
   commit-digests:
-    needs: [ check-postgres, check-ubuntu, check-php, build-deploy ]
-    if: |
-      needs.check-postgres.outputs.update == 'true' ||
-      needs.check-ubuntu.outputs.update == 'true' ||
-      needs.check-php.outputs.update == 'true'
+    needs: build-deploy
+    if: contains(needs.check-updates.outputs.*.update, 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - name: Checkout repository
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           sparse-checkout: |
             .github
@@ -61,26 +50,12 @@ jobs:
       - name: Prepare folder
         run: mkdir -p .github/digests
 
-      - name: Download postgres digest
-        if: needs.check-postgres.outputs.update == 'true'
+      - name: Download all updated digests
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: ${{ needs.check-postgres.outputs.artifact_name }}
+          pattern: digest-*
           path: .github/digests
-
-      - name: Download ubuntu digest
-        if: needs.check-ubuntu.outputs.update == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: ${{ needs.check-ubuntu.outputs.artifact_name }}
-          path: .github/digests
-
-      - name: Download php digest
-        if: needs.check-php.outputs.update == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: ${{ needs.check-php.outputs.artifact_name }}
-          path: .github/digests
+          merge-multiple: true
 
       - name: Commit all updated digests
         shell: bash

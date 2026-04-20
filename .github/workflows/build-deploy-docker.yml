@@ -35,7 +35,7 @@ jobs:
       httpd_digest: ${{ steps.push-sign.outputs.httpd_digest }}
     env:
       IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
-      SERVICES: database,wildfly,httpd
+      SERVICES: "database wildfly httpd"
     steps:
       - name: Checkout repository
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0

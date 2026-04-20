@@ -182,13 +182,12 @@ jobs:
         continue-on-error: true
         run: cosign attest --yes --type cyclonedx --predicate "${{ matrix.svc }}.sbom.cdx.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
 
-      - name: Generate provenance JSON
-        continue-on-error: true
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      - name: Generate and push build provenance
+        uses: actions/attest-build-provenance@864457a58d4733d7f1574bd8821fa24e02cf7538 # v2.2.0
         with:
           subject-name: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}
           subject-digest: ${{ matrix.digest }}
-          push-to-registry: 'true'
+          push-to-registry: true
 
       - name: Vulnerabilities scan
         continue-on-error: true

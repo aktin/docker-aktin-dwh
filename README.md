@@ -129,14 +129,14 @@ ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
 Build provenance attestation proves the image was built from scratch in GitHub. The result will show the Git commit and build metadata. You can then trace the build back to our public repository.
 ```bash
 cosign verify-attestation \
---type slsaprovenance \
+--type slsaprovenance1 \
 --certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
 ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
 
 # Example command:
 # cosign verify-attestation \
-# --type slsaprovenance \
+# --type slsaprovenance1 \
 # --certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
 # --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
 # ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d

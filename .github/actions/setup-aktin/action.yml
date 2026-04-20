@@ -1,0 +1,22 @@
+name: Setup AKTIN Environment
+description: Checkouts code and sets up Java and Maven environment
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      with:
+        fetch-depth: 1
+
+    - name: Setup Java
+      uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Install Maven
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y maven

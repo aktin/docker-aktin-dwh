@@ -188,7 +188,7 @@ jobs:
           subject-digest: ${{ matrix.digest }}
 
       - name: Save provenance.json
-        run: cp "${{ steps.prov.outputs.predicate }}" "${{ matrix.svc }}.prov.json"
+        run: cp "${{ steps.prov.outputs.bundle-path }}" "${{ matrix.svc }}.prov.json"
 
       - name: Attest build provenance
         run: cosign attest --yes --type slsaprovenance --predicate "${{ matrix.svc }}.prov.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"

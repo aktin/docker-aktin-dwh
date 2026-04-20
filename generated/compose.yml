@@ -1,0 +1,77 @@
+# --------------------------------------
+# Script Name:  compose.yml
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
+# Purpose:      Defines AKTIN emergency department system services:
+#               - PostgreSQL database with i2b2/AKTIN schema
+#               - WildFly application server
+#               - Apache2 reverse proxy with i2b2 webclient
+# --------------------------------------
+
+services:
+  database:
+    image: ghcr.io/aktin/notaufnahme-dwh-database:${DATABASE_CONTAINER_VERSION:-1.7rc1-1-docker1}
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    shm_size: 256m
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres && psql -U postgres -d aktin -c \"SELECT 1 FROM information_schema.schemata WHERE schema_name = 'aktin'\"" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+  wildfly:
+    image: ghcr.io/aktin/notaufnahme-dwh-wildfly:${WILDFLY_CONTAINER_VERSION:-1.7rc1-1-docker1}
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${DB_HOST:-database}
+      DB_PORT: ${DB_PORT:-5432}
+      DEV_MODE: ${DEV_MODE:-false}
+      LANG: ${LANG:-de_DE.UTF-8}
+      LC_ALL: ${LC_ALL:-de_DE.UTF-8}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - aktin_config:/etc/aktin
+      - aktin_data:/var/lib/aktin
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --server-response --spider http://127.0.0.1:9090/aktin/admin/rest/info/version 2>&1 | awk '/^  HTTP/{print $2}'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+  httpd:
+    image: ghcr.io/aktin/notaufnahme-dwh-httpd:${HTTPD_CONTAINER_VERSION:-1.7rc1-1-docker1}
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      wildfly:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "apache2ctl configtest" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+volumes:
+  pg_data:
+  aktin_config:
+  aktin_data:
+
+secrets:
+  postgres_password:
+    file: ./secret.txt

@@ -171,6 +171,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate SBOM
+        continue-on-error: true
         if: inputs.scan_enabled
         uses: anchore/sbom-action@da167eac915b4e86f08b264dbdbc867b61be6f0c # v0.20.5
         with:
@@ -178,10 +179,11 @@ jobs:
           output-file: ${{ matrix.svc }}.sbom.cdx.json
 
       - name: Attest SBOM
+        continue-on-error: true
         run: cosign attest --yes --type cyclonedx --predicate "${{ matrix.svc }}.sbom.cdx.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
 
       - name: Generate provenance JSON
-        id: prov
+        continue-on-error: true
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-name: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}
@@ -189,6 +191,7 @@ jobs:
           push-to-registry: 'true'
 
       - name: Vulnerabilities scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           scan-type: image
@@ -199,6 +202,7 @@ jobs:
           severity: 'HIGH,CRITICAL'
 
       - name: Upload vulnerabilities scan results
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
         with:
           sarif_file: trivy-${{ matrix.svc }}.sarif

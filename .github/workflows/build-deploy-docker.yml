@@ -188,12 +188,6 @@ jobs:
           subject-digest: ${{ matrix.digest }}
           push-to-registry: 'true'
 
-      - name: Save provenance.json
-        run: cp "${{ steps.prov.outputs.bundle-path }}" "${{ matrix.svc }}.prov.json"
-
-      - name: Attest build provenance
-        run: cosign attest --yes --type slsaprovenance --predicate "${{ matrix.svc }}.prov.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
-
       - name: Vulnerabilities scan
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:

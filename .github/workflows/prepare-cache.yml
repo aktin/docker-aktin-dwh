@@ -13,7 +13,7 @@ jobs:
     outputs:
       cache_key: ${{ steps.cache.outputs.cache_key }}
     steps:
-      - name: Sparse Checkout of Versions File
+      - name: Sparse checkout of versions file
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           sparse-checkout: |
@@ -25,5 +25,5 @@ jobs:
         id: cache
         run: |
           set -euo pipefail
-          DIGEST="$(md5sum src/resources/versions | awk '{print $1}')"
-          echo "cache_key=downloads--${DIGEST}" >> "$GITHUB_OUTPUT"
+          digest="$(md5sum src/resources/versions | awk '{print $1}')"
+          echo "cache_key=downloads--${digest}" >> "$GITHUB_OUTPUT"

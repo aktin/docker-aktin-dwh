@@ -20,73 +20,56 @@ on:
       update:
         description: "True if container has a new digest"
         value: ${{ jobs.check.outputs.update }}
-      artifact_name:
-        description: "Name of the uploaded digest artifact"
-        value: ${{ jobs.check.outputs.artifact_name }}
 
 jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      update: ${{ steps.compare-digest.outputs.update }}
-      artifact_name: ${{ steps.read-version.outputs.artifact_name }}
+      update: ${{ steps.check.outputs.update }}
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - name: Checkout relevant files
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           sparse-checkout: |
             src/resources/versions
             .github/
           fetch-depth: 1
-
-      - name: Read version data and load digest file
-        id: read-version
+      - name: Compare digests
+        id: check
         run: |
           set -euo pipefail
-          VERSION_FILE="src/resources/versions"
-          VERSION=$(grep -E "^${{ inputs.version_key }}=" "$VERSION_FILE" | cut -d= -f2)
-          if [[ -z "$VERSION" ]]; then
+          version_file="src/resources/versions"
+          version="$(grep -E "^${{ inputs.version_key }}=" "$version_file" | cut -d= -f2)"
+          if [[ -z "$version" ]]; then
             echo "Version not found for key: ${{ inputs.version_key }}" >&2
             exit 1
           fi
-          echo "CONTAINER=${{ inputs.container }}" >> $GITHUB_ENV
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "ARCH=${{ inputs.architecture }}" >> $GITHUB_ENV
-          DIGEST_DIR=".github/digests"
-          mkdir -p "$DIGEST_DIR"
-          echo "DIGEST_FILE=$DIGEST_DIR/digest-${{ inputs.container }}" >> $GITHUB_ENV
-          echo "artifact_name=digest-${{ inputs.container }}" >> $GITHUB_OUTPUT
-
-      - name: Fetch current digest from Docker Hub
-        id: fetch-digest
-        run: |
-          set -euo pipefail
-          URL="https://registry.hub.docker.com/v2/repositories/library/$CONTAINER/tags/$VERSION"
-          DIGEST="$(curl -sf "$URL" | jq -r ".images[] | select(.architecture==\"$ARCH\") | .digest" | head -n1)"
-          if [ -z "$DIGEST" ] || [ "$DIGEST" == "null" ]; then
-            echo "Digest not found for $CONTAINER:$VERSION ($ARCH)" >&2
+          
+          digest_dir=".github/digests"
+          digest_file="${digest_dir}/digest-${{ inputs.container }}"
+          mkdir -p "$digest_dir"
+          url="https://registry.hub.docker.com/v2/repositories/library/${{ inputs.container }}/tags/${version}"
+          current_digest="$(curl -sf "$url" | jq -r ".images[] | select(.architecture==\"${{ inputs.architecture }}\") | .digest" | head -n1)"
+          if [[ -z "$current_digest" || "$current_digest" == "null" ]]; then
+            echo "Digest not found for ${{ inputs.container }}:${version} (${{ inputs.architecture }})" >&2
             exit 1
           fi
-          echo "$DIGEST" > current_digest.txt
-
-      - name: Compare digests
-        id: compare-digest
-        run: |
-          set -euo pipefail
-          CLEAN_CURRENT="$(tr -d '\n\r' < current_digest.txt)"
-          CLEAN_PREVIOUS="$([ -f "$DIGEST_FILE" ] && tr -d '\n\r' < "$DIGEST_FILE" || echo "" )"
-          if [ "$CLEAN_CURRENT" != "$CLEAN_PREVIOUS" ]; then
-            echo "update=true" >> $GITHUB_OUTPUT
-            echo "CHANGED=true" >> $GITHUB_ENV
-            echo "$CLEAN_CURRENT" > "$DIGEST_FILE"
-          else
-            echo "update=false" >> $GITHUB_OUTPUT
-            echo "CHANGED=false" >> $GITHUB_ENV
+          
+          previous_digest=""
+          if [[ -f "$digest_file" ]]; then
+            previous_digest="$(tr -d '\n\r' < "$digest_file")"
           fi
-
+          
+          if [[ "$current_digest" != "$previous_digest" ]]; then
+            printf '%s\n' "$current_digest" > "$digest_file"
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Upload updated digest artifact
-        if: env.CHANGED == 'true'
+        if: ${{ steps.check.outputs.update == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ${{ steps.read-version.outputs.artifact_name }}
-          path: ${{ env.DIGEST_FILE }}
+          name: digest-${{ inputs.container }}
+          path: .github/digests/digest-${{ inputs.container }}
           retention-days: 1

@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       scan_enabled:
-        description: "Run linting, vuln, config, secret scans, and SBOMs before push"
+        description: "Run source scans and image attest/scan steps"
         required: false
         type: boolean
         default: true
@@ -32,20 +32,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      packages: write
       contents: read
+      packages: write
       security-events: write
     outputs:
       database_digest: ${{ steps.push.outputs.database_digest }}
       wildfly_digest: ${{ steps.push.outputs.wildfly_digest }}
       httpd_digest: ${{ steps.push.outputs.httpd_digest }}
+    env:
+      IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
     steps:
-      - uses: ./.github/actions/setup-aktin
-
       - name: Checkout repository
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           fetch-depth: 1
+
+      - name: Setup AKTIN environment
+        uses: ./.github/actions/setup-aktin
 
       - name: Restore cached downloads
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
@@ -55,12 +58,14 @@ jobs:
 
       - name: Build images
         working-directory: src
-        run: ./build.sh --create-latest
         env:
           DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
+        run: |
+          set -euo pipefail
+          ./build.sh --create-latest
 
       - name: Secrets and config scan
-        if: inputs.scan_enabled
+        if: ${{ inputs.scan_enabled }}
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           scan-type: fs
@@ -70,8 +75,8 @@ jobs:
           output: trivy-results.sarif
           exit-code: '0'
 
-      - name: Upload scan results
-        if: inputs.scan_enabled
+      - name: Upload source scan results
+        if: ${{ inputs.scan_enabled }}
         uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
         with:
           sarif_file: trivy-results.sarif
@@ -89,9 +94,9 @@ jobs:
         run: |
           set -euo pipefail
           for svc in database wildfly httpd; do
-            image="ghcr.io/aktin/notaufnahme-dwh-${svc}"
+            image="${IMAGE_PREFIX}${svc}"
             docker push --all-tags "$image"
-            digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$image:latest" | cut -d'@' -f2)
+            digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image:latest" | cut -d'@' -f2)"
             echo "${svc}_digest=${digest}" >> "$GITHUB_OUTPUT"
           done
 
@@ -105,7 +110,7 @@ jobs:
 
   attest-and-scan:
     needs: build
-    if: inputs.scan_enabled
+    if: ${{ inputs.scan_enabled }}
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -156,17 +161,17 @@ jobs:
           subject-digest: ${{ matrix.digest }}
           push-to-registry: true
 
-      - name: Vulnerabilities scan
+      - name: Vulnerability scan
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           scan-type: image
           image-ref: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
           format: sarif
           output: trivy-${{ matrix.svc }}.sarif
-          exit-code: 0
-          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+          severity: HIGH,CRITICAL
 
-      - name: Upload vulnerabilities scan results
+      - name: Upload vulnerability scan results
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
         with:

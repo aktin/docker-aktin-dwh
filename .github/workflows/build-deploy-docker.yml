@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       scan_enabled:
-        description: "Run linting, vuln, config, secret scans, and SBOMs before push"
+        description: "Run source scans and image attest/scan steps"
         required: false
         type: boolean
         default: true
@@ -20,41 +20,35 @@ on:
       DEV_API_KEY:
         description: "API key used for Wildfly DEV_MODE"
         required: true
+    outputs:
+      database_digest:
+        value: ${{ jobs.build.outputs.database_digest }}
+      wildfly_digest:
+        value: ${{ jobs.build.outputs.wildfly_digest }}
+      httpd_digest:
+        value: ${{ jobs.build.outputs.httpd_digest }}
 
 jobs:
-  build-deploy:
+  build:
     runs-on: ubuntu-latest
     permissions:
-      packages: write
-      id-token: write
       contents: read
+      packages: write
       security-events: write
     outputs:
-      database_digest: ${{ steps.push-sign.outputs.database_digest }}
-      wildfly_digest: ${{ steps.push-sign.outputs.wildfly_digest }}
-      httpd_digest: ${{ steps.push-sign.outputs.httpd_digest }}
+      database_digest: ${{ steps.push.outputs.database_digest }}
+      wildfly_digest: ${{ steps.push.outputs.wildfly_digest }}
+      httpd_digest: ${{ steps.push.outputs.httpd_digest }}
     env:
       IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
-      SERVICES: "database wildfly httpd"
     steps:
       - name: Checkout repository
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           fetch-depth: 1
 
-      - name: Setup Java
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - name: Install Maven
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y maven
-
-      - name: Install cosign
-        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+      - name: Setup AKTIN environment
+        uses: ./.github/actions/setup-aktin
 
       - name: Restore cached downloads
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
@@ -62,47 +56,31 @@ jobs:
           path: src/downloads/
           key: ${{ inputs.cache_key }}
 
-      - name: Build Docker images
+      - name: Build images
+        working-directory: src
         env:
           DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
-        working-directory: src
-        run: ./build.sh --create-latest
+        run: |
+          set -euo pipefail
+          ./build.sh --create-latest
 
-      - name: Config scan
-        if: inputs.scan_enabled
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
-        with:
-          scan-type: config
-          scanners: config
-          scan-ref: src/build
-          format: sarif
-          output: trivy-config.sarif
-          exit-code: '0'
-
-      - name: Upload config scan results
-        if: inputs.scan_enabled
-        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
-        with:
-          sarif_file: trivy-config.sarif
-          category: trivy-config
-
-      - name: Secrets scan
-        if: inputs.scan_enabled
+      - name: Secrets and config scan
+        if: ${{ inputs.scan_enabled }}
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           scan-type: fs
-          scanners: secret
+          scanners: config,secret
           scan-ref: src/build
           format: sarif
-          output: trivy-secrets.sarif
+          output: trivy-results.sarif
           exit-code: '0'
 
-      - name: Upload secrets scan results
-        if: inputs.scan_enabled
-        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
+      - name: Upload source scan results
+        if: ${{ inputs.scan_enabled }}
+        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
         with:
-          sarif_file: trivy-secrets.sarif
-          category: trivy-secrets
+          sarif_file: trivy-results.sarif
+          category: static-analysis
 
       - name: Login to GHCR
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
@@ -111,22 +89,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push and sign images, capture digests
-        id: push-sign
+      - name: Push and capture digests
+        id: push
         run: |
           set -euo pipefail
-          for SERVICE in $SERVICES; do
-            IMAGE="${IMAGE_PREFIX}${SERVICE}"
-            docker push --all-tags "$IMAGE"
-            # capture the registry digest for :latest and sign ONLY that
-            # pushing :latest again is very cheap because of content-addressable layers in ghcr
-            LATEST_DIGEST="$(docker push "${IMAGE}:latest" | grep -Eo 'sha256:[0-9a-f]{64}' | tail -n1)"
-            if [[ -z "$LATEST_DIGEST" ]]; then
-              echo "Failed to resolve digest for ${IMAGE}:latest" >&2
-              exit 1
-            fi
-            cosign sign --yes "${IMAGE}@${LATEST_DIGEST}"
-            echo "${SERVICE}_digest=${LATEST_DIGEST}" >> "$GITHUB_OUTPUT"
+          for svc in database wildfly httpd; do
+            image="${IMAGE_PREFIX}${svc}"
+            docker push --all-tags "$image"
+            digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image:latest" | cut -d'@' -f2)"
+            echo "${svc}_digest=${digest}" >> "$GITHUB_OUTPUT"
           done
 
       - name: Upload compose artifact
@@ -137,32 +108,28 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  attest-scan:
-    needs: build-deploy
-    if: inputs.scan_enabled
+  attest-and-scan:
+    needs: build
+    if: ${{ inputs.scan_enabled }}
     runs-on: ubuntu-latest
     permissions:
       packages: write
       id-token: write
-      contents: read
       attestations: write
       security-events: write
     strategy:
+      fail-fast: false
       matrix:
         include:
           - svc: database
-            digest: ${{ needs.build-deploy.outputs.database_digest }}
+            digest: ${{ needs.build.outputs.database_digest }}
           - svc: wildfly
-            digest: ${{ needs.build-deploy.outputs.wildfly_digest }}
+            digest: ${{ needs.build.outputs.wildfly_digest }}
           - svc: httpd
-            digest: ${{ needs.build-deploy.outputs.httpd_digest }}
+            digest: ${{ needs.build.outputs.httpd_digest }}
     env:
       IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
-
     steps:
-      - name: Install cosign
-        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
-
       - name: Login to GHCR
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
@@ -170,9 +137,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install cosign
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+
+      - name: Sign image
+        run: cosign sign --yes "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
+
       - name: Generate SBOM
-        continue-on-error: true
-        if: inputs.scan_enabled
         uses: anchore/sbom-action@da167eac915b4e86f08b264dbdbc867b61be6f0c # v0.20.5
         with:
           image: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
@@ -182,16 +153,15 @@ jobs:
         continue-on-error: true
         run: cosign attest --yes --type cyclonedx --predicate "${{ matrix.svc }}.sbom.cdx.json" "${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}"
 
-      - name: Generate provenance JSON
+      - name: Generate and attest build provenance
         continue-on-error: true
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest-build-provenance@864457a58d4733d7f1574bd8821fa24e02cf7538 # v2.2.0
         with:
           subject-name: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}
           subject-digest: ${{ matrix.digest }}
-          push-to-registry: 'true'
+          push-to-registry: true
 
-      - name: Vulnerabilities scan
-        continue-on-error: true
+      - name: Vulnerability scan
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           scan-type: image
@@ -199,11 +169,11 @@ jobs:
           format: sarif
           output: trivy-${{ matrix.svc }}.sarif
           exit-code: '0'
-          severity: 'HIGH,CRITICAL'
+          severity: HIGH,CRITICAL
 
-      - name: Upload vulnerabilities scan results
+      - name: Upload vulnerability scan results
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v.3.30.3
+        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
         with:
           sarif_file: trivy-${{ matrix.svc }}.sarif
           category: trivy-${{ matrix.svc }}

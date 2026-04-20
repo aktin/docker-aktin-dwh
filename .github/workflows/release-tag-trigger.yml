@@ -1,4 +1,4 @@
-name: Create new Docker Release
+name: Create New Docker Release
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     uses: ./.github/workflows/prepare-cache.yml
 
   build-deploy:
-    needs: [ prepare ]
+    needs: prepare
     uses: ./.github/workflows/build-deploy-docker.yml
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}
@@ -18,7 +18,7 @@ jobs:
       DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
 
   release:
-    needs: [ build-deploy ]
+    needs: build-deploy
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -50,7 +50,7 @@ jobs:
           git commit -m "chore: update generated compose.yml for ${{ github.ref_name }} [skip ci]" || exit 0
           git push
 
-      - name: Create GitHub Release
+      - name: Create GitHub release
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
           files: src/build/compose.yml

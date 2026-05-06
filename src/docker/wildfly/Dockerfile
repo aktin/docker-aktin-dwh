@@ -9,6 +9,7 @@ FROM ubuntu:__UBUNTU_VERSION__
 
 ARG BUILD_TIME
 ARG WILDFLY_UID=101
+ARG WILDFLY_GID=101
 
 LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.authors="akombeiz@ukaachen.de, shuening@ukaachen.de, skurka@ukaachen.de, hheidemeyer@ukaachen.de" \
@@ -56,7 +57,10 @@ RUN chmod +x /entrypoint.sh \
 
 EXPOSE 8080
 
-# Switch back to WildFly user for enhanced security
-USER wildfly
+# Important:
+# The entrypoint must start as root so it can repair ownership of mounted
+# Docker volumes from older installations. It will then drop privileges.
+USER root
 
 ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/opt/wildfly/bin/standalone.sh", "-b", "0.0.0.0"]

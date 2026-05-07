@@ -8,6 +8,8 @@
 FROM ubuntu:__UBUNTU_VERSION__
 
 ARG BUILD_TIME
+ARG WILDFLY_UID=101
+ARG WILDFLY_GID=101
 
 LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.authors="akombeiz@ukaachen.de, shuening@ukaachen.de, skurka@ukaachen.de, hheidemeyer@ukaachen.de" \
@@ -34,26 +36,31 @@ RUN sed -i 's/archive.ubuntu.com/de.archive.ubuntu.com/g' /etc/apt/sources.list 
 
 # Install locales (en_US as fallback) and essential packages
 RUN apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends locales-all tzdata __UBUNTU_DEPENDENCIES__ wget \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends locales-all tzdata gosu __UBUNTU_DEPENDENCIES__ wget \
     && rm -rf /var/lib/apt/lists/
 
-RUN adduser --system --group --disabled-login --home /var/lib/wildfly wildfly
+# Create stable wildfly user/group with fixed numeric UID/GID.
+RUN groupadd --system --gid "${WILDFLY_GID}" wildfly  \
+    && useradd --system --uid "${WILDFLY_UID}" --gid "${WILDFLY_GID}" --home-dir /var/lib/wildfly --shell /usr/sbin/nologin wildfly
 
 WORKDIR /opt/wildfly
-COPY ./wildfly ./
-COPY ./import-scripts/* /var/lib/aktin/import-scripts/
-COPY ./aktin.properties /etc/aktin/
-COPY ./dev-aktin.properties /usr/share/aktin/
+COPY --chown=${WILDFLY_UID}:${WILDFLY_GID} ./wildfly ./
+COPY --chown=${WILDFLY_UID}:${WILDFLY_GID} ./import-scripts/* /var/lib/aktin/import-scripts/
+COPY --chown=${WILDFLY_UID}:${WILDFLY_GID} ./aktin.properties /etc/aktin/
+COPY --chown=${WILDFLY_UID}:${WILDFLY_GID} ./dev-aktin.properties /usr/share/aktin/
 COPY ./entrypoint.sh /entrypoint.sh
 
-# Set permissions and link configuration
+# Set permissions and link configuration.
 RUN chmod +x /entrypoint.sh \
- && ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/ \
- && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin /usr/share/aktin/
+    && ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/aktin.properties \
+    && chown -R "${WILDFLY_UID}:${WILDFLY_GID}" /opt/wildfly /etc/aktin /var/lib/aktin /usr/share/aktin/
 
 EXPOSE 8080
 
-# Switch back to WildFly user for enhanced security
-USER wildfly
+# Important:
+# The entrypoint must start as root so it can repair ownership of mounted
+# Docker volumes from older installations. It will then drop privileges.
+USER root
 
 ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/opt/wildfly/bin/standalone.sh", "-b", "0.0.0.0"]

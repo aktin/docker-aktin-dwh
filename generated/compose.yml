@@ -27,7 +27,7 @@ services:
       retries: 10
       start_period: 120s
   wildfly:
-    image: ghcr.io/aktin/notaufnahme-dwh-wildfly:${WILDFLY_CONTAINER_VERSION:-1.7rc1-1-docker1}
+    image: ghcr.io/aktin/notaufnahme-dwh-wildfly:${WILDFLY_CONTAINER_VERSION:-1.7rc1-1-docker2}
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped

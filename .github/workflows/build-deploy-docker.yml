@@ -65,7 +65,9 @@ jobs:
           ./build.sh --create-latest
 
       - name: Secrets and config scan
+        id: trivy_source_scan
         if: ${{ inputs.scan_enabled }}
+        continue-on-error: true
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           scan-type: fs
@@ -76,7 +78,8 @@ jobs:
           exit-code: '0'
 
       - name: Upload source scan results
-        if: ${{ inputs.scan_enabled }}
+        if: ${{ inputs.scan_enabled && steps.trivy_source_scan.outcome == 'success' }}
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
         with:
           sarif_file: trivy-results.sarif
@@ -162,6 +165,8 @@ jobs:
           push-to-registry: true
 
       - name: Vulnerability scan
+        id: trivy_image_scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           scan-type: image
@@ -172,6 +177,7 @@ jobs:
           severity: HIGH,CRITICAL
 
       - name: Upload vulnerability scan results
+        if: ${{ steps.trivy_image_scan.outcome == 'success' }}
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
         with:

@@ -24,8 +24,6 @@ jobs:
           sudo apt-get install -y maven
 
       - name: Build Docker images
-        env:
-          DEV_API_KEY: "test-key"
         working-directory: src
         run: |
           export DOCKER_BUILDKIT=0

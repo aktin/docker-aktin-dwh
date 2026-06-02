@@ -14,8 +14,6 @@ jobs:
     uses: ./.github/workflows/build-deploy-docker.yml
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}
-    secrets:
-      DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
 
   release:
     needs: build-deploy

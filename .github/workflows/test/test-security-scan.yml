@@ -52,7 +52,6 @@ jobs:
 
       - name: Build Docker images
         env:
-          DEV_API_KEY: "test-key"
           DOCKER_BUILDKIT: "0"
         working-directory: src
         run: |

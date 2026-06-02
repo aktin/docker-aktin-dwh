@@ -41,8 +41,6 @@ jobs:
     uses: ./.github/workflows/build-deploy-docker.yml
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}
-    secrets:
-      DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
 
   commit-digests:
     needs: [ check-postgres, check-ubuntu, check-php, build-deploy ]

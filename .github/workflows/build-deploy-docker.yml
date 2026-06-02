@@ -16,10 +16,6 @@ on:
         required: false
         type: boolean
         default: true
-    secrets:
-      DEV_API_KEY:
-        description: "API key used for Wildfly DEV_MODE"
-        required: true
     outputs:
       database_digest:
         value: ${{ jobs.build.outputs.database_digest }}
@@ -58,8 +54,6 @@ jobs:
 
       - name: Build images
         working-directory: src
-        env:
-          DEV_API_KEY: ${{ secrets.DEV_API_KEY }}
         run: |
           set -euo pipefail
           ./build.sh --create-latest

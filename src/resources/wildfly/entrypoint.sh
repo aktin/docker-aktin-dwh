@@ -7,6 +7,9 @@
 
 set -e
 
+ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
+echo ${TZ} > /etc/timezone
+
 DEV_PROPERTIES=/usr/share/aktin/dev-aktin.properties
 PROD_PROPERTIES=/etc/aktin/aktin.properties
 WILDLFY_PROPERTIES=/opt/wildfly/standalone/configuration/aktin.properties
@@ -21,5 +24,6 @@ fi
 
 mkdir -p /var/lib/aktin/import-scripts
 cp /usr/share/aktin/import-scripts/* /var/lib/aktin/import-scripts/
+chown -R wildfly:wildfly /var/lib/aktin/import-scripts
 
-exec /opt/wildfly/bin/standalone.sh -b 0.0.0.0
+exec gosu wildfly /opt/wildfly/bin/standalone.sh -b 0.0.0.0

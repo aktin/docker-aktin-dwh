@@ -59,12 +59,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [ -z "${DEV_API_KEY:-}" ]; then
-  echo "Error: DEV_API_KEY environment variable required for development properties in the WildFly container" >&2
-  echo "Set DEV_API_KEY before running: DEV_API_KEY=your-dev-key $0 [options]" >&2
-  exit 1
-fi
-
 # Define relevant directories as absolute paths
 readonly DIR_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly DIR_DOCKER="${DIR_SRC}/docker"
@@ -255,7 +249,6 @@ prepare_wildfly_docker() {
     sed -e "s|^broker\.uris=.*|broker.uris=https://aktin-test-broker.klinikum.rwth-aachen.de/broker/|" \
         -e "s|^broker\.intervals=.*|broker.intervals=PT1M|" \
         -e "s|^local\.cn=.*|local.cn=DEV MODE DWH|" \
-        -e "s|^broker\.keys=.*|broker.keys=${DEV_API_KEY}|" \
         -e "s|^import\.cda\.debug\.dir=.*|import.cda.debug.dir=/var/lib/aktin/cda-debug/|" \
         -e "s|^import\.cda\.debug\.level=.*|import.cda.debug.level=all|" \
         -e "s|^report\.debug\.keeptempfiles=.*|report.debug.keeptempfiles=true|" \
@@ -310,6 +303,7 @@ prepare_docker_compose() {
     sed -i '/wildfly_deployments:/d' "${prod_compose}"
     sed -i '/- \.\/debug\/cda:/d' "${prod_compose}"
     sed -i '/- \.\/debug\/report-temp:/d' "${prod_compose}"
+    sed -i '/BROKER_API_KEY:/d' "${prod_compose}"
   }
 
   create_dev_compose

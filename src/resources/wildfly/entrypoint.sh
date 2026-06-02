@@ -16,6 +16,7 @@ WILDLFY_PROPERTIES=/opt/wildfly/standalone/configuration/aktin.properties
 
 if [ "$DEV_MODE" = "true" ]; then
   echo "Running in DEV mode"
+  sed -i "s|^broker\.keys=.*|broker.keys=${BROKER_API_KEY:?BROKER_API_KEY must be set in DEV_MODE}|" "${DEV_PROPERTIES}"
   ln -sf "${DEV_PROPERTIES}" "${WILDLFY_PROPERTIES}"
 else
   echo "Running in PROD mode"

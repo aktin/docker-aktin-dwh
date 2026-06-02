@@ -45,6 +45,7 @@ COPY ./entrypoint.sh /entrypoint.sh
 
 # Set permissions and link configuration
 RUN chmod +x /entrypoint.sh \
+ && mkdir -p /var/lib/aktin \
  && ln -sf /etc/aktin/aktin.properties /opt/wildfly/standalone/configuration/ \
  && chown -R wildfly:wildfly /opt/wildfly /etc/aktin /var/lib/aktin /usr/share/aktin/
 

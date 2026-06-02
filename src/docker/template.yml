@@ -49,6 +49,8 @@ services:
     volumes:
       - aktin_config:/etc/aktin
       - aktin_data:/var/lib/aktin
+      - ./debug/cda:/var/lib/aktin/cda-debug
+      - ./debug/report-temp:/var/tmp/report-temp
       - wildfly_deployments:/opt/wildfly/standalone/deployments
     depends_on:
       database:

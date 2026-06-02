@@ -256,6 +256,9 @@ prepare_wildfly_docker() {
         -e "s|^broker\.intervals=.*|broker.intervals=PT1M|" \
         -e "s|^local\.cn=.*|local.cn=DEV MODE DWH|" \
         -e "s|^broker\.keys=.*|broker.keys=${DEV_API_KEY}|" \
+        -e "s|^import\.cda\.debug\.dir=.*|import.cda.debug.dir=/var/lib/aktin/cda-debug/|" \
+        -e "s|^import\.cda\.debug\.level=.*|import.cda.debug.level=all|" \
+        -e "s|^report\.debug\.keeptempfiles=.*|report.debug.keeptempfiles=true|" \
         "${base_dir}/etc/aktin/aktin.properties" > "${build_dir}/dev-aktin.properties"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
     cp "${DIR_RESOURCES}/wildfly/entrypoint.sh" "${build_dir}/"
@@ -305,6 +308,8 @@ prepare_docker_compose() {
     sed -i 's/DEV_MODE: \${DEV_MODE:-true}/DEV_MODE: ${DEV_MODE:-false}/' "${prod_compose}"
     sed -i '/- wildfly_deployments:\/opt\/wildfly\/standalone\/deployments/d' "${prod_compose}"
     sed -i '/wildfly_deployments:/d' "${prod_compose}"
+    sed -i '/- \.\/debug\/cda:/d' "${prod_compose}"
+    sed -i '/- \.\/debug\/report-temp:/d' "${prod_compose}"
   }
 
   create_dev_compose

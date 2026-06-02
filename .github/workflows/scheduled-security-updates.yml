@@ -24,32 +24,42 @@ jobs:
       container: php
       version_key: APACHE_VERSION
 
-  prepare:
+  gate:
     needs: [ check-postgres, check-ubuntu, check-php ]
-    if: |
-      needs.check-postgres.outputs.update == 'true' ||
-      needs.check-ubuntu.outputs.update == 'true' ||
-      needs.check-php.outputs.update == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      any_update: ${{ steps.eval.outputs.any_update }}
+    steps:
+      - name: Evaluate whether any base container changed
+        id: eval
+        env:
+          UPDATES: >-
+            ${{ needs.check-postgres.outputs.update }}
+            ${{ needs.check-ubuntu.outputs.update }}
+            ${{ needs.check-php.outputs.update }}
+        run: |
+          set -euo pipefail
+          if [[ "$UPDATES" == *true* ]]; then
+            echo "any_update=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any_update=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  prepare:
+    needs: gate
+    if: ${{ needs.gate.outputs.any_update == 'true' }}
     uses: ./.github/workflows/prepare-cache.yml
 
   build-deploy:
-    needs: [ prepare, check-postgres, check-ubuntu, check-php ]
-    if: |
-      needs.check-postgres.outputs.update == 'true' ||
-      needs.check-ubuntu.outputs.update == 'true' ||
-      needs.check-php.outputs.update == 'true'
+    needs: [ gate, prepare ]
+    if: ${{ needs.gate.outputs.any_update == 'true' }}
     uses: ./.github/workflows/build-deploy-docker.yml
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}
 
   commit-digests:
-    needs: [ check-postgres, check-ubuntu, check-php, build-deploy ]
-    if: |
-      needs.build-deploy.result == 'success' && (
-        needs.check-postgres.outputs.update == 'true' ||
-        needs.check-ubuntu.outputs.update == 'true' ||
-        needs.check-php.outputs.update == 'true'
-      )
+    needs: [ gate, build-deploy ]
+    if: ${{ needs.gate.outputs.any_update == 'true' && needs.build-deploy.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

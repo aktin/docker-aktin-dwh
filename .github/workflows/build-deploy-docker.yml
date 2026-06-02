@@ -24,6 +24,9 @@ on:
       httpd_digest:
         value: ${{ jobs.build.outputs.httpd_digest }}
 
+env:
+  IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,8 +38,6 @@ jobs:
       database_digest: ${{ steps.push.outputs.database_digest }}
       wildfly_digest: ${{ steps.push.outputs.wildfly_digest }}
       httpd_digest: ${{ steps.push.outputs.httpd_digest }}
-    env:
-      IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
     steps:
       - name: Checkout repository
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
@@ -121,8 +122,6 @@ jobs:
             digest: ${{ needs.build.outputs.wildfly_digest }}
           - svc: httpd
             digest: ${{ needs.build.outputs.httpd_digest }}
-    env:
-      IMAGE_PREFIX: ghcr.io/aktin/notaufnahme-dwh-
     steps:
       - name: Login to GHCR
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0

@@ -19,4 +19,7 @@ else
   ln -sf "${PROD_PROPERTIES}" "${WILDLFY_PROPERTIES}"
 fi
 
+mkdir -p /var/lib/aktin/import-scripts
+cp /usr/share/aktin/import-scripts/* /var/lib/aktin/import-scripts/
+
 exec /opt/wildfly/bin/standalone.sh -b 0.0.0.0

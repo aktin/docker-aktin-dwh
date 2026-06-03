@@ -18,19 +18,9 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.title="AKTIN PostgreSQL" \
     org.opencontainers.image.description="PostgreSQL database with i2b2/AKTIN schema"
 
-WORKDIR /sql.d
-COPY ./sql/* ./
+COPY ./sql/init.sql /docker-entrypoint-initdb.d/init.sql
+COPY ./sql/update[0-9]*.sql /updates/
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Combine SQL scripts into single initialization file
-RUN cat \
-    i2b2_init.sql \
-    i2b2_db.sql \
-    update_wildfly_host.sql \
-    addon_i2b2crcdata.concept_dimension.sql \
-    addon_i2b2metadata.sql \
-    update01_convert_zipcodes_to_str.sql \
-    update02_add_missing_p21_dates.sql \
-    aktin_init.sql \
-    > /docker-entrypoint-initdb.d/init.sql \
-    && rm -rf /sql.d/*
-
+ENTRYPOINT ["/entrypoint.sh"]

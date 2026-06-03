@@ -166,7 +166,8 @@ execute_deb_build_scripts() {
 
 prepare_postgresql_docker(){
   echo "Preparing PostgreSQL container environment..."
-  local sql_target_dir="${DIR_BUILD}/database/sql"
+  local build_dir="${DIR_BUILD}/database"
+  local sql_target_dir="${build_dir}/sql"
   mkdir -p "${sql_target_dir}"
 
   copy_package_sql_scripts() {
@@ -177,13 +178,28 @@ prepare_postgresql_docker(){
     echo "Copying ${pkg_name} SQL scripts..."
     cp "${sql_source_dir}/"* "${sql_target_dir}"
   }
+
+  generate_init_sql() {
+    {
+      cat "${sql_target_dir}/i2b2_init.sql"
+      cat "${sql_target_dir}/i2b2_db.sql"
+      cat "${sql_target_dir}/update_wildfly_host.sql"
+      cat "${sql_target_dir}/addon_i2b2crcdata.concept_dimension.sql"
+      cat "${sql_target_dir}/addon_i2b2metadata.sql"
+      cat "${sql_target_dir}/aktin_init.sql"
+    } > "${sql_target_dir}/init.sql"
+  }
+
   copy_package_sql_scripts "i2b2"
   copy_package_sql_scripts "dwh"
+  cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
+  generate_init_sql
+  cp "${DIR_RESOURCES}/database/entrypoint.sh" "${build_dir}/entrypoint.sh"
+
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
-      "${DIR_DOCKER}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
-  cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
+      "${DIR_DOCKER}/database/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
 # TODO: Delete duplicates from proxy.php blacklist/whitelist?

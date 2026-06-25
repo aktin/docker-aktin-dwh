@@ -1,6 +1,6 @@
 # --------------------------------------
 # Script Name:  compose.yml
-# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de
+# Author:       shuening@ukaachen.de, skurka@ukaachen.de, akombeiz@ukaachen.de, hheidemeyer@ukaachen.de, whoy@ukaachen.de
 # Purpose:      Defines AKTIN emergency department system services:
 #               - PostgreSQL database with i2b2/AKTIN schema
 #               - WildFly application server

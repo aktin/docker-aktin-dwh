@@ -35,6 +35,8 @@ services:
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     build:
       context: ./wildfly
       args:

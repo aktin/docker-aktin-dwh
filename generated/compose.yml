@@ -9,7 +9,7 @@
 
 services:
   database:
-    image: ghcr.io/aktin/notaufnahme-dwh-database:${DATABASE_CONTAINER_VERSION:-1.7rc1-1-docker1}
+    image: ghcr.io/aktin/notaufnahme-dwh-database:${DATABASE_CONTAINER_VERSION:-1.7.1-docker1}
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
@@ -27,10 +27,12 @@ services:
       retries: 10
       start_period: 120s
   wildfly:
-    image: ghcr.io/aktin/notaufnahme-dwh-wildfly:${WILDFLY_CONTAINER_VERSION:-1.7rc1-1-docker1}
+    image: ghcr.io/aktin/notaufnahme-dwh-wildfly:${WILDFLY_CONTAINER_VERSION:-1.7.1-docker1}
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DB_HOST: ${DB_HOST:-database}
       DB_PORT: ${DB_PORT:-5432}
@@ -51,7 +53,7 @@ services:
       retries: 10
       start_period: 120s
   httpd:
-    image: ghcr.io/aktin/notaufnahme-dwh-httpd:${HTTPD_CONTAINER_VERSION:-1.7rc1-1-docker1}
+    image: ghcr.io/aktin/notaufnahme-dwh-httpd:${HTTPD_CONTAINER_VERSION:-1.7.1-docker1}
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped

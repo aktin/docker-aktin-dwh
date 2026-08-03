@@ -28,9 +28,6 @@ ENV LANG=de_DE.UTF-8 \
     DB_HOST=database \
     DB_PORT=5432
 
-# Configure the timezone non-interactively
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
 # Switch to regional German mirrors
 RUN sed -i 's/archive.ubuntu.com/de.archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
 

@@ -163,20 +163,9 @@ git clone https://github.com/aktin/docker-aktin-dwh.git
 cd docker-aktin-dwh 
 ```
 
-2. Set the required `DEV_API_KEY` environment variable:
+2. Run the build script:
 ```bash
-export DEV_API_KEY="<your-development-api-key>"
-```
-
-Alternatively, you can create a `.env` file in the project root:
-```bash
-echo "DEV_API_KEY=<your-development-api-key>" > .env
-source .env
-```
-
-3. Run the build script:
-```bash
-DEV_API_KEY="<your-development-api-key>" ./src/build.sh
+./src/build.sh
 ```
 
 The build script accepts the following arguments:
@@ -186,13 +175,18 @@ The build script accepts the following arguments:
 * `--use-main-branch`: Use current version from main branch instead of release versions
 * `--create-latest`: Create additional containers tagged as 'latest'
 
-4. Run the container locally after the build finished using:
+3. Run the container locally after the build finished using:
 ```bash
 cd build/
 docker compose -f compose.dev.yml up -d 
 ```
 
-The WildFly Docker container can run in development mode using the `DEV_MODE` environment variable. When set, the WildFly Docker will use a customized configuration file and mount a separate volume to `/opt/wildfly/standalone/deployments` to allow for isolated development deployments. `DEV_MODE=true` is set by default in the `compose.dev.yml`.
+The WildFly Docker container can run in development mode using the `DEV_MODE` environment variable. When set, the WildFly Docker will use a customized configuration file with logging of CDA imports and rscript executions.
+
+When `DEV_MODE=true`, the `BROKER_API_KEY` environment variable is required and must be set in a `.env` file next to `compose.dev.yml`:
+```bash
+echo "BROKER_API_KEY=<your-api-key>" > build/.env
+```
 
 ## Services
 
@@ -221,3 +215,4 @@ These variables can be defined in a `.env` file and are used throughout `compose
 - `DB_HOST`: Hostname of the database container (default: `database`)
 - `DB_PORT`: Port to reach PostgreSQL (default: `5432`)
 - `DEV_MODE`: Enables WildFly dev mode (default: `false`)
+- `BROKER_API_KEY`: API key for the AKTIN broker; required when `DEV_MODE=true`

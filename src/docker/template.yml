@@ -9,6 +9,7 @@
 
 services:
   database:
+    container_name: ${COMPOSE_PROJECT_NAME}-database
     image: __IMAGE_NAMESPACE__-database:${DATABASE_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_REVISION__}
     security_opt:
       - no-new-privileges:true
@@ -31,6 +32,7 @@ services:
       retries: 10
       start_period: 120s
   wildfly:
+    container_name: ${COMPOSE_PROJECT_NAME}-wildfly
     image: __IMAGE_NAMESPACE__-wildfly:${WILDFLY_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__WILDFLY_CONTAINER_REVISION__}
     security_opt:
       - no-new-privileges:true
@@ -63,6 +65,7 @@ services:
       retries: 10
       start_period: 120s
   httpd:
+    container_name: ${COMPOSE_PROJECT_NAME}-httpd
     image: __IMAGE_NAMESPACE__-httpd:${HTTPD_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_REVISION__}
     security_opt:
       - no-new-privileges:true

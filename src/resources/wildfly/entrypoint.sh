@@ -27,4 +27,7 @@ mkdir -p /var/lib/aktin/import-scripts
 cp /usr/share/aktin/import-scripts/* /var/lib/aktin/import-scripts/
 chown -R wildfly:wildfly /var/lib/aktin/import-scripts
 
+mkdir -p /var/lib/aktin/cda-debug /var/tmp/report-temp
+chown wildfly:wildfly /var/lib/aktin/cda-debug /var/tmp/report-temp
+
 exec gosu wildfly /opt/wildfly/bin/standalone.sh -b 0.0.0.0

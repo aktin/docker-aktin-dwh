@@ -315,8 +315,6 @@ prepare_docker_compose() {
     cp "${dev_compose}" "${prod_compose}"
     sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
     sed -i 's/DEV_MODE: \${DEV_MODE:-true}/DEV_MODE: ${DEV_MODE:-false}/' "${prod_compose}"
-    sed -i '/- wildfly_deployments:\/opt\/wildfly\/standalone\/deployments/d' "${prod_compose}"
-    sed -i '/wildfly_deployments:/d' "${prod_compose}"
     sed -i '/- \.\/debug\/cda:/d' "${prod_compose}"
     sed -i '/- \.\/debug\/report-temp:/d' "${prod_compose}"
     sed -i '/BROKER_API_KEY:/d' "${prod_compose}"

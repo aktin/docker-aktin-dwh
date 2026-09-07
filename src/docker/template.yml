@@ -54,7 +54,6 @@ services:
       - aktin_data:/var/lib/aktin
       - ./debug/cda:/var/lib/aktin/cda-debug
       - ./debug/report-temp:/var/tmp/report-temp
-      - wildfly_deployments:/opt/wildfly/standalone/deployments
     depends_on:
       database:
         condition: service_healthy
@@ -90,7 +89,6 @@ volumes:
   pg_data:
   aktin_config:
   aktin_data:
-  wildfly_deployments:
 
 secrets:
   postgres_password:

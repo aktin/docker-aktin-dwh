@@ -196,6 +196,11 @@ prepare_postgresql_docker(){
   generate_init_sql
   cp "${DIR_RESOURCES}/database/entrypoint.sh" "${build_dir}/entrypoint.sh"
 
+
+  cp "${DIR_RESOURCES}/database/ensure-test-database.sh" "${build_dir}/ensure-test-database.sh"
+
+  cp "${DIR_RESOURCES}/database/init-test-database.sh" "${build_dir}/init-test-database.sh"
+
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \

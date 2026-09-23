@@ -201,6 +201,8 @@ prepare_postgresql_docker(){
 
   cp "${DIR_RESOURCES}/database/init-test-database.sh" "${build_dir}/init-test-database.sh"
 
+  cp "${DIR_RESOURCES}/database/remove-test-database.sh" "${build_dir}/remove-test-database.sh"
+
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \

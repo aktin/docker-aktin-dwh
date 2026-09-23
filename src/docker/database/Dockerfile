@@ -23,10 +23,13 @@ COPY ./sql/update[0-9]*.sql /updates/
 COPY ./entrypoint.sh /entrypoint.sh
 COPY ./ensure-test-database.sh /usr/local/bin/ensure-test-database.sh
 COPY ./init-test-database.sh /docker-entrypoint-initdb.d/90-init-test-database.sh
+COPY ./remove-test-database.sh /usr/local/bin/remove-test-database.sh
+
 RUN chmod +x \
     /entrypoint.sh \
     /usr/local/bin/ensure-test-database.sh \
+    /usr/local/bin/remove-test-database.sh \
     /docker-entrypoint-initdb.d/90-init-test-database.sh
-    
+
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["postgres"]

@@ -21,6 +21,7 @@ services:
         BUILD_TIME: "${BUILD_TIME}"
     environment:
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      TEST_DATABASE: ${TEST_DATABASE:-false}
     secrets:
       - postgres_password
     volumes:

@@ -11,4 +11,10 @@ if [ -f "$PGDATA/PG_VERSION" ]; then
     done
 fi
 
+if [ "${TEST_DATABASE:-false}" = "true" ]; then
+    echo "PostgreSQL test database mode enabled"
+else
+    echo "PostgreSQL test database mode disabled"
+fi
+
 exec docker-entrypoint.sh "$@"

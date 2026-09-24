@@ -51,6 +51,7 @@ services:
       BROKER_API_KEY: ${BROKER_API_KEY:-}
       LANG: ${LANG:-de_DE.UTF-8}
       LC_ALL: ${LC_ALL:-de_DE.UTF-8}
+      TEST_DATABASE: ${TEST_DATABASE:-false}
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       - aktin_config:/etc/aktin

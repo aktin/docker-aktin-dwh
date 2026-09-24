@@ -190,10 +190,21 @@ prepare_postgresql_docker(){
     } > "${sql_target_dir}/init.sql"
   }
 
+  generate_test_i2b2_sql() {
+    {
+      sed -n '/^CREATE SCHEMA AUTHORIZATION /p' "${sql_target_dir}/i2b2_init.sql"
+      cat "${sql_target_dir}/i2b2_db.sql"
+      cat "${sql_target_dir}/update_wildfly_host.sql"
+      cat "${sql_target_dir}/addon_i2b2crcdata.concept_dimension.sql"
+      cat "${sql_target_dir}/addon_i2b2metadata.sql"
+    } > "${sql_target_dir}/i2b2_test_init.sql"
+  }
+
   copy_package_sql_scripts "i2b2"
   copy_package_sql_scripts "dwh"
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
   generate_init_sql
+  generate_test_i2b2_sql
   cp "${DIR_RESOURCES}/database/entrypoint.sh" "${build_dir}/entrypoint.sh"
 
 
@@ -296,7 +307,14 @@ prepare_wildfly_docker() {
   )
   deploy_wildfly_base
   install_aktin_ds
+
+  sed -i \
+    -e '/<connection-url>jdbc:postgresql:/s|/i2b2?|/${env.I2B2_DB_NAME:i2b2}?|g' \
+    -e '/<connection-url>jdbc:postgresql:/s|/aktin</connection-url>|/${env.AKTIN_DB_NAME:aktin}</connection-url>|g' \
+    "${build_dir}/wildfly/standalone/configuration/standalone.xml"
+
   deploy_aktin_components
+
   sed -e "s|__UBUNTU_VERSION__|${UBUNTU_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \

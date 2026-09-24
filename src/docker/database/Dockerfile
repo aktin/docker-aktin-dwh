@@ -19,10 +19,11 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.description="PostgreSQL database with i2b2/AKTIN schema"
 
 COPY ./sql/init.sql /docker-entrypoint-initdb.d/init.sql
+COPY ./sql/i2b2_test_init.sql /usr/local/share/aktin/i2b2_test_init.sql
 COPY ./sql/update[0-9]*.sql /updates/
 COPY ./entrypoint.sh /entrypoint.sh
 COPY ./ensure-test-database.sh /usr/local/bin/ensure-test-database.sh
-COPY ./init-test-database.sh /docker-entrypoint-initdb.d/90-init-test-database.sh
+COPY ./init-test-database.sh /docker-entrypoint-initdb.d/zz-init-test-database.sh
 COPY ./remove-test-database.sh /usr/local/bin/remove-test-database.sh
 
 RUN chmod +x \

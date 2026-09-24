@@ -11,7 +11,6 @@ fi
 
 echo "PostgreSQL test database mode enabled"
 
-gosu postgres /usr/local/bin/ensure-test-database.sh
+/usr/local/bin/ensure-test-database.sh
 
 touch "${TEST_DATABASE_MARKER}"
-chown postgres:postgres "${TEST_DATABASE_MARKER}"

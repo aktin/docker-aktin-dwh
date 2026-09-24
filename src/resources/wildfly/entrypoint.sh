@@ -23,6 +23,16 @@ else
   ln -sf "${PROD_PROPERTIES}" "${WILDLFY_PROPERTIES}"
 fi
 
+if [ "${TEST_DATABASE:-false}" = "true" ]; then
+  export I2B2_DB_NAME=i2b2_test
+  export AKTIN_DB_NAME=aktin_test
+else
+  export I2B2_DB_NAME=i2b2
+  export AKTIN_DB_NAME=aktin
+fi
+
+echo "Using databases: ${I2B2_DB_NAME}, ${AKTIN_DB_NAME}"
+
 mkdir -p /var/lib/aktin/import-scripts
 cp /usr/share/aktin/import-scripts/* /var/lib/aktin/import-scripts/
 chown -R wildfly:wildfly /var/lib/aktin/import-scripts

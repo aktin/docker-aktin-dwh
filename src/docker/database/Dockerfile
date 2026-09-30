@@ -30,7 +30,7 @@ RUN chmod +x \
     /entrypoint.sh \
     /usr/local/bin/ensure-test-database.sh \
     /usr/local/bin/remove-test-database.sh \
-    /docker-entrypoint-initdb.d/90-init-test-database.sh
+    /docker-entrypoint-initdb.d/zz-init-test-database.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["postgres"]

@@ -20,6 +20,7 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
 
 COPY ./sql/init.sql /docker-entrypoint-initdb.d/init.sql
 COPY ./sql/i2b2_test_init.sql /usr/local/share/aktin/i2b2_test_init.sql
+COPY ./sql/i2b2_test_fixture.sql /usr/local/share/aktin/i2b2_test_fixture.sql
 COPY ./sql/update[0-9]*.sql /updates/
 COPY ./entrypoint.sh /entrypoint.sh
 COPY ./ensure-test-database.sh /usr/local/bin/ensure-test-database.sh

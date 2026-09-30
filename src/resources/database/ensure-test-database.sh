@@ -40,6 +40,12 @@ ensure_i2b2_test_database() {
         return 1
     fi
 
+        if ! psql -U postgres -d i2b2_test -v ON_ERROR_STOP=1 \
+        -f /usr/local/share/aktin/i2b2_test_fixture.sql; then
+        dropdb -U postgres i2b2_test
+        return 1
+    fi
+
     if ! psql -U postgres -d i2b2_test -v ON_ERROR_STOP=1 -c \
         "CREATE TABLE public.aktin_test_database_metadata (
              managed_by text NOT NULL,

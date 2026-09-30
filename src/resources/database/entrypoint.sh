@@ -19,12 +19,13 @@ stop_temporary_postgres() {
 }
 
 ensure_existing_test_database() {
-    echo "Starting PostgreSQL temporarily to check test database..."
+    echo "Starting PostgreSQL temporarily to recreate test databases..."
 
     start_temporary_postgres
 
+    gosu postgres /usr/local/bin/remove-test-database.sh
     gosu postgres /usr/local/bin/ensure-test-database.sh
-
+    
     touch "${TEST_DATABASE_MARKER}"
     chown postgres:postgres "${TEST_DATABASE_MARKER}"
 

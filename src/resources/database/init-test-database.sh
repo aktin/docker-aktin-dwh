@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Loads test patients only into the separate test cluster, never into the production volume
-if [ "${PGDATA}" != "/var/lib/postgresql/test-data" ]; then
+if [ "${TEST_DATABASE:-false}" != "true" ]; then
+    echo "TEST_DATABASE not set, skipping i2b2 test fixture"
     exit 0
 fi
 

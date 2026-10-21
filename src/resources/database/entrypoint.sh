@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-if [ "${TEST_DATABASE:-false}" = "true" ]; then
+if [ "${DEV_MODE:-false}" = "true" ]; then
     export PGDATA=/var/lib/postgresql/test-data
     echo "PostgreSQL test mode: using separate cluster in ${PGDATA}"
 fi

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Loads test patients only into the separate test cluster, never into the production volume
-if [ "${TEST_DATABASE:-false}" != "true" ]; then
-    echo "TEST_DATABASE not set, skipping i2b2 test fixture"
+if [ "${DEV_MODE:-false}" != "true" ]; then
+    echo "DEV_MODE not set, skipping i2b2 test fixture"
     exit 0
 fi
 

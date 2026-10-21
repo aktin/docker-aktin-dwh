@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if [ "${TEST_DATABASE:-false}" = "true" ]; then
+    export PGDATA=/var/lib/postgresql/test-data
+    echo "PostgreSQL test mode: using separate cluster in ${PGDATA}"
+fi
+
 PGDATA="${PGDATA:-/var/lib/postgresql/data}"
 
 if [ -f "$PGDATA/PG_VERSION" ]; then

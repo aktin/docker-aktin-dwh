@@ -21,7 +21,11 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
 COPY ./sql/init.sql /docker-entrypoint-initdb.d/init.sql
 COPY ./sql/update[0-9]*.sql /updates/
 COPY ./entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY ./sql/i2b2_test_fixture.sql /usr/local/share/aktin/i2b2_test_fixture.sql
+# zz- prefix: initdb.d scripts run in alphabetical order, the fixture needs the i2b2 schema from init.sql first.
+# Must stay executable: docker-entrypoint.sh sources non-executable .sh files, so the exit 0 in the guard would kill the whole init.
+COPY ./init-test-database.sh /docker-entrypoint-initdb.d/zz-init-test-database.sh
+RUN chmod +x /entrypoint.sh /docker-entrypoint-initdb.d/zz-init-test-database.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["postgres"]

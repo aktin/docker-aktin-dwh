@@ -21,12 +21,13 @@ services:
         BUILD_TIME: "${BUILD_TIME}"
     environment:
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      TEST_DATABASE: ${TEST_DATABASE:-false}
     secrets:
       - postgres_password
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres && psql -U postgres -d aktin -c \"SELECT 1 FROM information_schema.schemata WHERE schema_name = 'aktin'\"" ]
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres && psql -U postgres -d aktin -c \"SELECT 1 FROM information_schema.schemata WHERE schema_name = 'aktin'\"" ]
       interval: 30s
       timeout: 10s
       retries: 10

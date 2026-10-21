@@ -195,6 +195,8 @@ prepare_postgresql_docker(){
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
   generate_init_sql
   cp "${DIR_RESOURCES}/database/entrypoint.sh" "${build_dir}/entrypoint.sh"
+  cp "${DIR_RESOURCES}/database/i2b2_test_fixture.sql" "${sql_target_dir}/"
+  cp "${DIR_RESOURCES}/database/init-test-database.sh" "${build_dir}/init-test-database.sh"
 
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \

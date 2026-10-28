@@ -214,5 +214,5 @@ These variables can be defined in a `.env` file and are used throughout `compose
 - `HTTP_PORT`: Exposed port for the Apache HTTPD server (default: `80`)
 - `DB_HOST`: Hostname of the database container (default: `database`)
 - `DB_PORT`: Port to reach PostgreSQL (default: `5432`)
-- `DEV_MODE`: Enables WildFly dev mode (default: `false`)
+- `DEV_MODE`: Enables WildFly and Database dev mode (default: `false`)
 - `BROKER_API_KEY`: API key for the AKTIN broker; required when `DEV_MODE=true`

@@ -214,5 +214,5 @@ These variables can be defined in a `.env` file and are used throughout `compose
 - `HTTP_PORT`: Exposed port for the Apache HTTPD server (default: `80`)
 - `DB_HOST`: Hostname of the database container (default: `database`)
 - `DB_PORT`: Port to reach PostgreSQL (default: `5432`)
-- `DEV_MODE`: Enables WildFly dev mode (default: `false`)
+- `DEV_MODE`: Enables WildFly and Database dev mode (default: `false`). WildFly is restarted automatically when Compose restarts or recreates the database service as part of `docker compose up -d` or `docker compose restart database`.  This does not happen when only the database is targeted, e.g. `docker compose up -d --force-recreate database`, or when the database container crashes and is restarted by the restart policy. In these cases WildFly drops the stale connections after a short time, or you can run `docker compose restart wildfly`.
 - `BROKER_API_KEY`: API key for the AKTIN broker; required when `DEV_MODE=true`

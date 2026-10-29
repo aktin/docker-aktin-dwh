@@ -1,4 +1,10 @@
-# docker-aktin-dwh
+ # docker-aktin-dwh
+
+[![CI](https://github.com/aktin/docker-aktin-dwh/actions/workflows/ci.yml/badge.svg)](https://github.com/aktin/docker-aktin-dwh/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/aktin/docker-aktin-dwh/actions/workflows/codeql.yml/badge.svg)](https://github.com/aktin/docker-aktin-dwh/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/aktin/docker-aktin-dwh/badge)](https://securityscorecards.dev/viewer/?uri=github.com/aktin/docker-aktin-dwh)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/aktin/docker-aktin-dwh)](https://github.com/aktin/docker-aktin-dwh/releases)
 
 A containerized deployment of the AKTIN emergency department system using Docker Compose, consisting of:
 * PostgreSQL database with i2b2/AKTIN schema
@@ -187,6 +193,36 @@ When `DEV_MODE=true`, the `BROKER_API_KEY` environment variable is required and 
 ```bash
 echo "BROKER_API_KEY=<your-api-key>" > build/.env
 ```
+
+## Commits and releases
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org), enforced by the commit-msg hook:
+
+```
+<type>(<optional scope>): <subject>
+```
+
+Allowed types are `feat fix docs style refactor perf test chore`. The subject starts lowercase, has no trailing period, and every line of the message stays at most 100 characters. Pull requests into `dev` are squash merged, so one conventional subject per PR lands on `dev`. `dev` is merged into `main` with a merge commit.
+
+A release is a tag `v*` on `main`. The release workflow builds, signs and attests the images, writes the release notes from the commit history with git-cliff and attaches the generated `compose.yml` to the GitHub Release.
+
+## Checks and gates
+
+Three layers. Each layer trusts the one before it a little less. The first layer, the git hooks on your machine, is described here. The checks on pull requests, the workflows, Dependabot and the rules on `main`, `dev` and release tags are described in [.github/workflows/README.md](.github/workflows/README.md).
+
+### On your machine
+
+> [!CAUTION]
+> Run `lefthook install` once after cloning, before your first commit. Without it no git hook runs on your machine.
+
+You need the [lefthook](https://lefthook.dev) binary for the git hooks (`apt install lefthook`, `brew install lefthook`, or a release download) and `python3` for the shared hooks. `hadolint`, `shellcheck` and `gitleaks` are optional, each hook skips itself when its tool is missing.
+
+| When       | What runs                                                                                                                                                 | Blocks     |
+|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|------------|
+| pre-commit | hadolint lints the staged Dockerfiles, shellcheck lints the staged scripts, gitleaks scans for secrets, the shared hooks reject data files, large files and oversized commits | the commit |
+| commit-msg | Conventional Commit header check                                                                                                                          | the commit |
+
+The shared data file guard allows `src/resources/database/` in this repository because the schema and synthetic fixture SQL live there. Hooks can be skipped with `--no-verify`, so nothing here is a guarantee. They exist for fast feedback.
 
 ## Services
 

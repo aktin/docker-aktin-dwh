@@ -1,0 +1,43 @@
+min_version: 2.0.5
+
+# Shared hooks: data file guard, large files, commit size, commit message.
+# Change git_url and ref to use another source or pin a version.
+remotes:
+  - git_url: https://github.com/aktin/aktin-github-scripts
+    ref: main
+    refetch_frequency: 24h
+    configs:
+      - hooks/lefthook.yml
+
+pre-commit:
+  parallel: true
+  commands:
+    hadolint:
+      glob: "**/Dockerfile"
+      run: |
+        if command -v hadolint >/dev/null 2>&1; then
+          hadolint --failure-threshold error {staged_files}
+        else
+          echo "hadolint not installed, skipping Dockerfile lint"
+        fi
+    shellcheck:
+      glob: "*.sh"
+      run: |
+        if command -v shellcheck >/dev/null 2>&1; then
+          shellcheck -S warning {staged_files}
+        else
+          echo "shellcheck not installed, skipping shell lint"
+        fi
+    gitleaks:
+      run: |
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks protect --staged --redact --verbose
+        else
+          echo "gitleaks not installed, skipping secret scan"
+        fi
+  scripts:
+    # The shared guard rejects data files outside its allowlist. This repo keeps
+    # schema and synthetic fixture SQL under src/resources/database/.
+    "block_data_files.py":
+      env:
+        DATA_FILE_ALLOWLIST: src/resources/database/

@@ -5,6 +5,12 @@
 #               - PostgreSQL database with i2b2/AKTIN schema
 #               - WildFly application server
 #               - Apache2 reverse proxy with i2b2 webclient
+# Requirements for updateagent:
+#               - Docker Engine (docker official, not Podman): the admin GUI detects Docker via /.dockerenv
+#               - The updateagent Debian package must be installed on the host
+#               - Linux hosts need extra_hosts "host.docker.internal:host-gateway" (set on the wildfly service)
+#               - updateDataPath (/var/lib/aktin/update) must be bind mounted into the wildfly container
+#               If any requirement is missing, the admin GUI silently reports the updateagent as not installed.
 # --------------------------------------
 
 services:

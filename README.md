@@ -215,7 +215,7 @@ Three layers. Each layer trusts the one before it a little less. The first layer
 > [!CAUTION]
 > Run `lefthook install` once after cloning, before your first commit. Without it no git hook runs on your machine.
 
-You need the [lefthook](https://lefthook.dev) binary for the git hooks (`apt install lefthook`, `brew install lefthook`, or a release download) and `python3`, `gitleaks` and `actionlint` for the shared hooks. A missing tool fails the commit. `hadolint` and `shellcheck` are optional, each of these hooks skips itself when its tool is missing.
+You need the [lefthook](https://lefthook.dev) binary for the git hooks (`apt install lefthook`, `brew install lefthook`, or a release download) plus `python3`, `gitleaks` and `actionlint` for the shared hooks and `hadolint` and `shellcheck` for the hooks of this repository. A missing tool fails the commit.
 
 | When       | What runs                                                                                                                                                 | Blocks     |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|------------|

@@ -15,20 +15,10 @@ pre-commit:
   commands:
     hadolint:
       glob: "**/Dockerfile"
-      run: |
-        if command -v hadolint >/dev/null 2>&1; then
-          hadolint --failure-threshold error {staged_files}
-        else
-          echo "hadolint not installed, skipping Dockerfile lint"
-        fi
+      run: hadolint --failure-threshold error {staged_files}
     shellcheck:
       glob: "*.sh"
-      run: |
-        if command -v shellcheck >/dev/null 2>&1; then
-          shellcheck -S warning {staged_files}
-        else
-          echo "shellcheck not installed, skipping shell lint"
-        fi
+      run: shellcheck -S warning {staged_files}
   scripts:
     # The shared guard rejects data files outside its allowlist. This repo keeps
     # schema and synthetic fixture SQL under src/resources/database/.

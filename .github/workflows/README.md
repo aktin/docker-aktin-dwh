@@ -6,17 +6,19 @@ What runs on GitHub for this repository and which rules protect `main`, `dev` an
 
 | Check             | Workflow                                                                      | Required to merge                                                                                                       |
 |-------------------|-------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `verify / verify` | `ci.yml` starts `verify.yml`, which lints Dockerfiles, shell scripts and workflows | yes                                                                                                                     |
+| `verify / verify` | `ci.yml` starts the shared `verify-base.yml`, which lints Dockerfiles, shell scripts and workflows | yes                                                                                                                     |
 | `review`          | `dependency-review.yml`, fails on new dependencies with high or critical CVEs | yes                                                                                                                     |
 | `analyze`         | `codeql.yml`, CodeQL scan of the workflow files                               | not as a check, but the ruleset on `main` blocks the merge on CodeQL errors or security alerts of severity high or above |
 
 ## Workflows
 
+`ci.yml`, `codeql.yml` and `dependency-review.yml` only hold the triggers. Their jobs live as reusable workflows in [aktin-github-scripts](https://github.com/aktin/aktin-github-scripts/tree/main/.github/workflows) and are called at `@main`.
+
 What each workflow does and when it runs. Schedules are in UTC and run on `main`:
 
 | Workflow                         | Pull request to `dev` or `main` | Push to `main` | Schedule        | Other        | What happens |
 |----------------------------------|---------------------------------|----------------|-----------------|--------------|--------------|
-| `ci.yml`                         | yes                             | yes            |                 |              | Has no logic of its own. It starts `verify.yml`, which checks the Dockerfiles with hadolint, the shell scripts with shellcheck and the workflow files with actionlint. The run fails when hadolint reports an error, shellcheck a warning or worse, or actionlint any finding |
+| `ci.yml`                         | yes                             | yes            |                 |              | Has no logic of its own. It starts the shared `verify-base.yml`, which checks the Dockerfiles with hadolint, the shell scripts with shellcheck and the workflow files with actionlint. The run fails when hadolint reports an error, shellcheck a warning or worse, or actionlint any finding |
 | `dependency-review.yml`          | yes                             |                |                 |              | Compares the dependencies before and after the pull request and fails when a newly added one has a known vulnerability of severity high or critical |
 | `codeql.yml`                     | yes                             | yes            |                 |              | Scans the workflow files for security mistakes, for example script injection or token permissions that are too broad, and reports the findings in the Security tab. Dockerfiles, shell scripts and SQL are not scanned |
 | `scorecard.yml`                  |                                 | yes            | Mondays 04:00   |              | Rates the security practices of the repository, for example branch rules, pinned actions, token permissions and code review, publishes the score to OpenSSF and feeds the badge in the root README. It changes nothing |

@@ -15,4 +15,4 @@ concurrency:
 
 jobs:
   verify:
-    uses: ./.github/workflows/verify.yml
+    uses: aktin/aktin-github-scripts/.github/workflows/verify-base.yml@main

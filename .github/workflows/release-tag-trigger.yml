@@ -21,15 +21,17 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout release notes
+      - name: Checkout with history
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          ref: main
-          sparse-checkout: |
-            .github/release_notes.md
-            generated
-          sparse-checkout-cone-mode: true
-          fetch-depth: 1
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: notes
+        uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
+        with:
+          config: cliff.toml
+          args: --latest --strip all
 
       - name: Download compose artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -52,6 +54,6 @@ jobs:
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
           files: src/build/compose.yml
-          body_path: .github/release_notes.md
+          body: ${{ steps.notes.outputs.content }}
           fail_on_unmatched_files: true
           make_latest: true

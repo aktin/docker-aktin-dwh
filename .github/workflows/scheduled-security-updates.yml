@@ -11,18 +11,21 @@ jobs:
     with:
       container: postgres
       version_key: POSTGRESQL_VERSION
+      image: database
 
   check-ubuntu:
     uses: ./.github/workflows/check-container-update.yml
     with:
       container: ubuntu
       version_key: UBUNTU_VERSION
+      image: wildfly
 
   check-php:
     uses: ./.github/workflows/check-container-update.yml
     with:
       container: php
       version_key: APACHE_VERSION
+      image: httpd
 
   gate:
     needs: [ check-postgres, check-ubuntu, check-php ]
@@ -57,37 +60,3 @@ jobs:
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}
 
-  commit-digests:
-    needs: [ gate, build-deploy ]
-    if: ${{ needs.gate.outputs.any_update == 'true' && needs.build-deploy.result == 'success' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
-        with:
-          sparse-checkout: |
-            .github
-          fetch-depth: 1
-
-      - name: Prepare digest folder
-        run: mkdir -p .github/digests
-
-      - name: Download all updated digests
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          pattern: digest-*
-          path: .github/digests
-          merge-multiple: true
-
-      - name: Commit all updated digests
-        run: |
-          set -euo pipefail
-          [[ "$GITHUB_REF" == refs/heads/* ]] || exit 0
-          branch="${GITHUB_REF_NAME:-main}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/digests
-          git commit -m "chore: update base image digests [skip ci]" || exit 0
-          git push origin HEAD:"$branch"

@@ -15,7 +15,8 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.revision="__HTTPD_CONTAINER_REVISION__" \
     org.opencontainers.image.vendor="AKTIN" \
     org.opencontainers.image.title="AKTIN Apache2" \
-    org.opencontainers.image.description="Apache/PHP web server with i2b2 interface and AKTIN integration"
+    org.opencontainers.image.description="Apache/PHP web server with i2b2 interface and AKTIN integration" \
+    org.opencontainers.image.base.digest="__BASE_DIGEST__"
 
 COPY ./webclient /var/www/html/webclient
 COPY ./aktin-j2ee-reverse-proxy.conf /etc/apache2/conf-available/

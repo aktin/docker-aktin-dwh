@@ -71,6 +71,11 @@ set -a
 . "${DIR_RESOURCES}/versions"
 set +a
 
+# Digest of a Docker Hub library image, recorded as image label so the nightly check can compare it against the current base image
+base_digest() {
+  docker buildx imagetools inspect "docker.io/library/$1" --format '{{.Manifest.Digest}}'
+}
+
 init_build_environment() {
   echo "Initializing build environment..."
   if [[ ! -d "${DIR_BUILD}" ]]; then
@@ -201,6 +206,7 @@ prepare_postgresql_docker(){
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
+      -e "s|__BASE_DIGEST__|$(base_digest "postgres:${POSTGRESQL_VERSION}")|g" \
       "${DIR_DOCKER}/database/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
@@ -234,6 +240,7 @@ prepare_apache2_docker() {
   sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
+      -e "s|__BASE_DIGEST__|$(base_digest "php:${APACHE_VERSION}")|g" \
       "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
@@ -296,6 +303,7 @@ prepare_wildfly_docker() {
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
       -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" \
+      -e "s|__BASE_DIGEST__|$(base_digest "ubuntu:${UBUNTU_VERSION}")|g" \
       "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
 

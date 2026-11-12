@@ -11,14 +11,13 @@ on:
         description: "The variable name to extract the version from 'src/resources/versions'"
         required: true
         type: string
-      architecture:
-        description: "The image architecture to check (default: 'amd64')"
-        required: false
+      image:
+        description: "The published image built on this container (database, wildfly or httpd)"
+        required: true
         type: string
-        default: "amd64"
     outputs:
       update:
-        description: "True if container has a new digest"
+        description: "True if the published image was built on an older base digest"
         value: ${{ jobs.check.outputs.update }}
 
 jobs:
@@ -27,49 +26,31 @@ jobs:
     outputs:
       update: ${{ steps.check.outputs.update }}
     steps:
-      - name: Checkout relevant files
+      - name: Checkout versions file
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           sparse-checkout: |
             src/resources/versions
-            .github/
+          sparse-checkout-cone-mode: false
           fetch-depth: 1
       - name: Compare digests
         id: check
+        env:
+          CONTAINER: ${{ inputs.container }}
+          VERSION_KEY: ${{ inputs.version_key }}
+          IMAGE: ghcr.io/aktin/notaufnahme-dwh-${{ inputs.image }}:latest
         run: |
           set -euo pipefail
-          version_file="src/resources/versions"
-          version="$(grep -E "^${{ inputs.version_key }}=" "$version_file" | cut -d= -f2)"
+          version="$(grep -E "^${VERSION_KEY}=" src/resources/versions | cut -d= -f2)"
           if [[ -z "$version" ]]; then
-            echo "Version not found for key: ${{ inputs.version_key }}" >&2
+            echo "Version not found for key: ${VERSION_KEY}" >&2
             exit 1
           fi
-          
-          digest_dir=".github/digests"
-          digest_file="${digest_dir}/digest-${{ inputs.container }}"
-          mkdir -p "$digest_dir"
-          url="https://registry.hub.docker.com/v2/repositories/library/${{ inputs.container }}/tags/${version}"
-          current_digest="$(curl -sf "$url" | jq -r ".images[] | select(.architecture==\"${{ inputs.architecture }}\") | .digest" | head -n1)"
-          if [[ -z "$current_digest" || "$current_digest" == "null" ]]; then
-            echo "Digest not found for ${{ inputs.container }}:${version} (${{ inputs.architecture }})" >&2
-            exit 1
-          fi
-          
-          previous_digest=""
-          if [[ -f "$digest_file" ]]; then
-            previous_digest="$(tr -d '\n\r' < "$digest_file")"
-          fi
-          
-          if [[ "$current_digest" != "$previous_digest" ]]; then
-            printf '%s\n' "$current_digest" > "$digest_file"
+          current_digest="$(docker buildx imagetools inspect "docker.io/library/${CONTAINER}:${version}" --format '{{.Manifest.Digest}}')"
+          built_digest="$(docker buildx imagetools inspect "$IMAGE" --format '{{index .Image.Config.Labels "org.opencontainers.image.base.digest"}}')"
+          echo "${CONTAINER}:${version} is ${current_digest}, ${IMAGE} was built on ${built_digest:-<no label>}"
+          if [[ "$current_digest" != "$built_digest" ]]; then
             echo "update=true" >> "$GITHUB_OUTPUT"
           else
             echo "update=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Upload updated digest artifact
-        if: ${{ steps.check.outputs.update == 'true' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: digest-${{ inputs.container }}
-          path: .github/digests/digest-${{ inputs.container }}
-          retention-days: 1

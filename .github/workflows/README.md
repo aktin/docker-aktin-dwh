@@ -12,7 +12,7 @@ What runs on GitHub for this repository and which rules protect `main`, `dev` an
 
 ## Workflows
 
-`ci.yml`, `codeql.yml` and `dependency-review.yml` only hold the triggers. Their jobs live as reusable workflows in [aktin-github-scripts](https://github.com/aktin/aktin-github-scripts/tree/main/.github/workflows) and are called at `@main`.
+`ci.yml`, `codeql.yml`, `dependency-review.yml` and `scorecard.yml` only hold the triggers. Their jobs live as reusable workflows in [aktin-github-scripts](https://github.com/aktin/aktin-github-scripts/tree/main/.github/workflows) and are called at `@main`.
 
 What each workflow does and when it runs. Schedules are in UTC and run on `main`:
 

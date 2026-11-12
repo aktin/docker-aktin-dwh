@@ -215,11 +215,11 @@ Three layers. Each layer trusts the one before it a little less. The first layer
 > [!CAUTION]
 > Run `lefthook install` once after cloning, before your first commit. Without it no git hook runs on your machine.
 
-You need the [lefthook](https://lefthook.dev) binary for the git hooks (`apt install lefthook`, `brew install lefthook`, or a release download) and `python3` for the shared hooks. `hadolint`, `shellcheck` and `gitleaks` are optional, each hook skips itself when its tool is missing.
+You need the [lefthook](https://lefthook.dev) binary for the git hooks (`apt install lefthook`, `brew install lefthook`, or a release download) and `python3`, `gitleaks` and `actionlint` for the shared hooks. A missing tool fails the commit. `hadolint` and `shellcheck` are optional, each of these hooks skips itself when its tool is missing.
 
 | When       | What runs                                                                                                                                                 | Blocks     |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|------------|
-| pre-commit | hadolint lints the staged Dockerfiles, shellcheck lints the staged scripts, gitleaks scans for secrets, the shared hooks reject data files, large files and oversized commits | the commit |
+| pre-commit | hadolint lints the staged Dockerfiles, shellcheck lints the staged scripts, the shared hooks scan for secrets with gitleaks, lint staged workflow files with actionlint and reject data files, large files and oversized commits | the commit |
 | commit-msg | Conventional Commit header check                                                                                                                          | the commit |
 
 The shared data file guard allows `src/resources/database/` in this repository because the schema and synthetic fixture SQL live there. Hooks can be skipped with `--no-verify`, so nothing here is a guarantee. They exist for fast feedback.

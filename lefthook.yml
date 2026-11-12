@@ -1,6 +1,7 @@
 min_version: 2.0.5
 
-# Shared hooks: data file guard, large files, commit size, commit message.
+# Shared hooks: gitleaks, actionlint, data file guard, large files, commit size,
+# commit message.
 # Change git_url and ref to use another source or pin a version.
 remotes:
   - git_url: https://github.com/aktin/aktin-github-scripts
@@ -27,13 +28,6 @@ pre-commit:
           shellcheck -S warning {staged_files}
         else
           echo "shellcheck not installed, skipping shell lint"
-        fi
-    gitleaks:
-      run: |
-        if command -v gitleaks >/dev/null 2>&1; then
-          gitleaks protect --staged --redact --verbose
-        else
-          echo "gitleaks not installed, skipping secret scan"
         fi
   scripts:
     # The shared guard rejects data files outside its allowlist. This repo keeps

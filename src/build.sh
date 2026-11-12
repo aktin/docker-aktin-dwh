@@ -60,7 +60,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Define relevant directories as absolute paths
-readonly DIR_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DIR_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly DIR_SRC
 readonly DIR_DOCKER="${DIR_SRC}/docker"
 readonly DIR_BUILD="${DIR_SRC}/build"
 readonly DIR_RESOURCES="${DIR_SRC}/resources"
@@ -70,6 +71,11 @@ readonly DIR_DOWNLOADS="${DIR_SRC}/downloads"
 set -a
 . "${DIR_RESOURCES}/versions"
 set +a
+
+# Digest of a Docker Hub library image, recorded as image label so the nightly check can compare it against the current base image
+base_digest() {
+  docker buildx imagetools inspect "docker.io/library/$1" --format '{{.Manifest.Digest}}'
+}
 
 init_build_environment() {
   echo "Initializing build environment..."
@@ -128,7 +134,8 @@ extract_artifacts() {
        return 0
      fi
      # Determine package directory based on download type (main/version)
-     local pkg_dir=$([ "$USE_MAIN" = true ] && echo "main" || echo "${version}")
+     local pkg_dir
+     pkg_dir=$([ "$USE_MAIN" = true ] && echo "main" || echo "${version}")
      local src_path="debian-${pkg_name}-pkg-${pkg_dir}/src"
      echo "Extracting ${pkg_name} source files..."
      mkdir -p "${target_dir}"
@@ -172,7 +179,8 @@ prepare_postgresql_docker(){
 
   copy_package_sql_scripts() {
     local pkg_name="$1"
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
     local pkg_path="${DIR_SRC}/downloads/${pkg_name}/build/aktin-notaufnahme-${pkg_name}_${version}"
     local sql_source_dir="${pkg_path}/usr/share/aktin-notaufnahme-${pkg_name}/sql"
     echo "Copying ${pkg_name} SQL scripts..."
@@ -201,6 +209,7 @@ prepare_postgresql_docker(){
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
+      -e "s|__BASE_DIGEST__|$(base_digest "postgres:${POSTGRESQL_VERSION}")|g" \
       "${DIR_DOCKER}/database/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
@@ -212,7 +221,8 @@ prepare_apache2_docker() {
   mkdir -p "${build_dir}"
 
   deploy_i2b2_webclient() {
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
     local source_dir="${DIR_SRC}/downloads/i2b2/build/aktin-notaufnahme-i2b2_${version}/var/www/html/webclient"
     local target_dir="${build_dir}/webclient"
     echo "Copying i2b2 webclient..."
@@ -222,7 +232,8 @@ prepare_apache2_docker() {
     sed -i -e "s|localhost|${wildfly_host}|g" -e "s|127\.0\.0\.1|${wildfly_host}|g" "${target_dir}/proxy.php"
   }
   deploy_proxy_config() {
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
     local source_file="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}/etc/apache2/conf-available/aktin-j2ee-reverse-proxy.conf"
     echo "Deploying reverse proxy config..."
     cp "${source_file}" "${build_dir}/"
@@ -234,6 +245,7 @@ prepare_apache2_docker() {
   sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
+      -e "s|__BASE_DIGEST__|$(base_digest "php:${APACHE_VERSION}")|g" \
       "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
@@ -243,22 +255,26 @@ prepare_wildfly_docker() {
   mkdir -p "${build_dir}"/{wildfly,import-scripts}
 
   deploy_wildfly_base() {
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
     local source_dir="${DIR_SRC}/downloads/i2b2/build/aktin-notaufnahme-i2b2_${version}/opt/wildfly"
     echo "Copying Wildfly server..."
     cp -r "${source_dir}/"* "${build_dir}/wildfly"
   }
   install_aktin_ds() {
     echo "Configuring Wildfly server..."
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
     local base_dir="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}"
-    local jdbc_version=$(grep "POSTGRES_JDBC_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
+    local jdbc_version
+    jdbc_version=$(grep "POSTGRES_JDBC_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
     sed -e "s|__POSTGRES_JDBC_VERSION__|${jdbc_version}|g" "${base_dir}/opt/wildfly/bin/add-aktin-config.cli" > "${build_dir}/wildfly/bin/add-aktin-config.cli"
     "${build_dir}/wildfly/bin/jboss-cli.sh" --file="${build_dir}/wildfly/bin/add-aktin-config.cli"
     rm "${build_dir}"/wildfly/standalone/configuration/standalone_xml_history/current/*
   }
   deploy_aktin_components() {
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
     local base_dir="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}"
     echo "Copying AKTIN components..."
     cp -r "${base_dir}/var/lib/aktin/import-scripts/"* "${build_dir}/import-scripts/"
@@ -277,11 +293,13 @@ prepare_wildfly_docker() {
   # get all openjdk, python and R dependencies of debian package
   get_package_dependencies() {
    local pkg_name="$1"
-   local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
+   local version
+   version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
    local control_path="${DIR_SRC}/downloads/${pkg_name}/build/aktin-notaufnahme-${pkg_name}_${version}/DEBIAN/control"
    grep '^Depends:' "${control_path}"
   }
-  local ubuntu_dependencies=$(
+  local ubuntu_dependencies
+  ubuntu_dependencies=$(
    { get_package_dependencies "i2b2"; get_package_dependencies "dwh"; } | \
    tr ',' '\n' | \
    grep -E 'openjdk|python3|r-' | \
@@ -296,6 +314,7 @@ prepare_wildfly_docker() {
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
       -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" \
+      -e "s|__BASE_DIGEST__|$(base_digest "ubuntu:${UBUNTU_VERSION}")|g" \
       "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
@@ -328,7 +347,8 @@ prepare_docker_compose() {
 
 cleanup_old_docker_images() {
   echo "Cleaning up Docker resources..."
-  local images=$(docker images "${IMAGE_NAMESPACE}-*" --format "{{.Repository}}:{{.Tag}}")
+  local images
+  images=$(docker images "${IMAGE_NAMESPACE}-*" --format "{{.Repository}}:{{.Tag}}")
   if [ -n "$images" ]; then
     # Remove any containers using these images
     for image in $images; do
@@ -367,7 +387,8 @@ pull_base_images() {
 
 build_docker_images() {
   echo "Building Docker images..."
-  local cwd="$(pwd)"
+  local cwd
+  cwd="$(pwd)"
   cd "${DIR_BUILD}"
 
   # Build versioned images

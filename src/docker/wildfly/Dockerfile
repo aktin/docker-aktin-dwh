@@ -16,7 +16,8 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.revision="__WILDFLY_CONTAINER_REVISION__" \
     org.opencontainers.image.vendor="AKTIN" \
     org.opencontainers.image.title="AKTIN Wildfly" \
-    org.opencontainers.image.description="Java application server with AKTIN Data Warehouse"
+    org.opencontainers.image.description="Java application server with AKTIN Data Warehouse" \
+    org.opencontainers.image.base.digest="__BASE_DIGEST__"
 
 # Default runtime configuration (can be overridden via docker run / compose)
 ENV LANG=de_DE.UTF-8 \

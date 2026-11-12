@@ -9,3 +9,4 @@ jobs:
     with:
       container: postgres
       version_key: POSTGRESQL_VERSION
+      image: database

@@ -5,12 +5,25 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+
 jobs:
+  verify:
+    uses: aktin/aktin-github-scripts/.github/workflows/verify-base.yml@main
+
   prepare:
+    needs: verify
     uses: ./.github/workflows/prepare-cache.yml
 
   build-deploy:
     needs: prepare
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      id-token: write
+      attestations: write
     uses: ./.github/workflows/build-deploy-docker.yml
     with:
       cache_key: ${{ needs.prepare.outputs.cache_key }}
@@ -25,6 +38,7 @@ jobs:
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Generate release notes
         id: notes
@@ -39,15 +53,25 @@ jobs:
           name: compose-yml
           path: src/build
 
-      - name: Commit generated compose.yml
+      # The branch generated holds only compose.yml, one commit per release,
+      # so its history shows what changed between releases.
+      - name: Checkout generated branch
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          ref: generated
+          path: generated-branch
+
+      - name: Commit compose.yml to generated branch
+        working-directory: generated-branch
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          mkdir -p generated
-          cp -f src/build/compose.yml generated/compose.yml
+          cp -f ../src/build/compose.yml compose.yml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add --force generated/compose.yml
-          git commit -m "chore: update generated compose.yml for ${{ github.ref_name }} [skip ci]" || exit 0
+          git add compose.yml
+          git commit -m "chore: update compose.yml for ${TAG}" || exit 0
           git push
 
       - name: Create GitHub release

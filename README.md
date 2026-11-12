@@ -204,7 +204,7 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org), enfo
 
 Allowed types are `feat fix docs style refactor perf test chore`. The subject starts lowercase, has no trailing period, and every line of the message stays at most 100 characters. Pull requests into `dev` are squash merged, so one conventional subject per PR lands on `dev`. `dev` is merged into `main` with a merge commit.
 
-A release is a tag `v*` on `main`. The release workflow builds, signs and attests the images, writes the release notes from the commit history with git-cliff and attaches the generated `compose.yml` to the GitHub Release.
+A release is a tag `v*` on `main`. The release workflow builds, signs and attests the images, writes the release notes from the commit history with git-cliff and attaches the generated `compose.yml` to the GitHub Release. The same file is committed to the branch `generated`, one commit per release, so its [history](https://github.com/aktin/docker-aktin-dwh/commits/generated/compose.yml) shows what changed between releases.
 
 ## Checks and gates
 

@@ -215,11 +215,11 @@ Three layers. Each layer trusts the one before it a little less. The first layer
 > [!CAUTION]
 > Run `lefthook install` once after cloning, before your first commit. Without it no git hook runs on your machine.
 
-You need the [lefthook](https://lefthook.dev) binary for the git hooks (`apt install lefthook`, `brew install lefthook`, or a release download) plus `python3`, `gitleaks` and `actionlint` for the shared hooks and `hadolint` and `shellcheck` for the hooks of this repository. A missing tool fails the commit.
+You need the [lefthook](https://lefthook.dev) binary for the git hooks (`apt install lefthook`, `brew install lefthook`, or a release download) plus `python3`, `gitleaks`, `actionlint`, `hadolint` and `shellcheck`. All hooks come from aktin-github-scripts. A missing tool fails the commit, actionlint, hadolint and shellcheck are only called when a workflow file, Dockerfile or shell script is staged.
 
 | When       | What runs                                                                                                                                                 | Blocks     |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|------------|
-| pre-commit | hadolint lints the staged Dockerfiles, shellcheck lints the staged scripts, the shared hooks scan for secrets with gitleaks, lint staged workflow files with actionlint and reject data files, large files and oversized commits | the commit |
+| pre-commit | gitleaks scans for secrets, actionlint, hadolint and shellcheck lint the staged workflow files, Dockerfiles and shell scripts, the shared scripts reject data files, large files and oversized commits | the commit |
 | commit-msg | Conventional Commit header check                                                                                                                          | the commit |
 
 The shared data file guard allows `src/resources/database/` in this repository because the schema and synthetic fixture SQL live there. Hooks can be skipped with `--no-verify`, so nothing here is a guarantee. They exist for fast feedback.

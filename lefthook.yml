@@ -1,7 +1,6 @@
 min_version: 2.0.5
 
-# Shared hooks: gitleaks, actionlint, data file guard, large files, commit size,
-# commit message.
+# All hooks come from the shared config in hooks/lefthook.yml.
 # Change git_url and ref to use another source or pin a version.
 remotes:
   - git_url: https://github.com/aktin/aktin-github-scripts
@@ -11,14 +10,6 @@ remotes:
       - hooks/lefthook.yml
 
 pre-commit:
-  parallel: true
-  commands:
-    hadolint:
-      glob: "**/Dockerfile"
-      run: hadolint --failure-threshold error {staged_files}
-    shellcheck:
-      glob: "*.sh"
-      run: shellcheck -S warning {staged_files}
   scripts:
     # The shared guard rejects data files outside its allowlist. This repo keeps
     # schema and synthetic fixture SQL under src/resources/database/.

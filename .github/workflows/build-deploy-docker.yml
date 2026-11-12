@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       scan_enabled:
-        description: "Run source scans and image attest/scan steps"
+        description: "Sign and attest the pushed images"
         required: false
         type: boolean
         default: true
@@ -33,7 +33,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      security-events: write
     outputs:
       database_digest: ${{ steps.push.outputs.database_digest }}
       wildfly_digest: ${{ steps.push.outputs.wildfly_digest }}
@@ -58,24 +57,6 @@ jobs:
         run: |
           set -euo pipefail
           ./build.sh --create-latest
-
-      - name: Secrets and config scan
-        if: ${{ inputs.scan_enabled }}
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
-        with:
-          scan-type: fs
-          scanners: config,secret
-          scan-ref: src/build
-          format: sarif
-          output: trivy-results.sarif
-          exit-code: '0'
-
-      - name: Upload source scan results
-        if: ${{ inputs.scan_enabled }}
-        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
-        with:
-          sarif_file: trivy-results.sarif
-          category: static-analysis
 
       - name: Login to GHCR
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
@@ -103,7 +84,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  attest-and-scan:
+  attest:
     needs: build
     if: ${{ inputs.scan_enabled }}
     runs-on: ubuntu-latest
@@ -111,7 +92,6 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -153,20 +133,3 @@ jobs:
           subject-name: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}
           subject-digest: ${{ matrix.digest }}
           push-to-registry: true
-
-      - name: Vulnerability scan
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
-        with:
-          scan-type: image
-          image-ref: ${{ env.IMAGE_PREFIX }}${{ matrix.svc }}@${{ matrix.digest }}
-          format: sarif
-          output: trivy-${{ matrix.svc }}.sarif
-          exit-code: '0'
-          severity: HIGH,CRITICAL
-
-      - name: Upload vulnerability scan results
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
-        with:
-          sarif_file: trivy-${{ matrix.svc }}.sarif
-          category: trivy-${{ matrix.svc }}

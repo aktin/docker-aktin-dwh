@@ -29,7 +29,7 @@ jobs:
 
           # Install Dockle
           VERSION=$(curl -s https://api.github.com/repos/goodwithtech/dockle/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
-          wget -O /tmp/dockle.tar.gz https://github.com/goodwithtech/dockle/releases/download/v${VERSION}/dockle_${VERSION}_Linux-64bit.tar.gz
+          wget -O /tmp/dockle.tar.gz "https://github.com/goodwithtech/dockle/releases/download/v${VERSION}/dockle_${VERSION}_Linux-64bit.tar.gz"
           tar zxf /tmp/dockle.tar.gz -C /tmp
           sudo mv /tmp/dockle /usr/local/bin/
 
@@ -52,9 +52,11 @@ jobs:
       - name: Get image tags
         id: get-tags
         run: |
-          echo "WILDFLY_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-wildfly | head -1)" >> $GITHUB_ENV
-          echo "HTTPD_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-httpd | head -1)" >> $GITHUB_ENV
-          echo "DATABASE_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-database | head -1)" >> $GITHUB_ENV
+          {
+            echo "WILDFLY_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-wildfly | head -1)"
+            echo "HTTPD_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-httpd | head -1)"
+            echo "DATABASE_TAG=$(docker images --format '{{.Tag}}' ghcr.io/aktin/notaufnahme-dwh-database | head -1)"
+          } >> "$GITHUB_ENV"
 
       - name: Create scan results directories
         run: |
@@ -64,8 +66,8 @@ jobs:
         run: |
           for dockerfile in src/build/*/Dockerfile; do
             if [ -f "$dockerfile" ]; then
-              service=$(basename $(dirname "$dockerfile"))
-              hadolint "$dockerfile" 2>&1 | tee -a scan-results/$service/hadolint.txt || true
+              service=$(basename "$(dirname "$dockerfile")")
+              hadolint "$dockerfile" 2>&1 | tee -a "scan-results/$service/hadolint.txt" || true
             fi
           done
 
@@ -91,8 +93,8 @@ jobs:
         run: |
           for dockerfile in src/build/*/Dockerfile; do
             if [ -f "$dockerfile" ]; then
-              service=$(basename $(dirname "$dockerfile"))
-              trivy config "$dockerfile" 2>&1 | tee -a scan-results/$service/trivy-config.txt || true
+              service=$(basename "$(dirname "$dockerfile")")
+              trivy config "$dockerfile" 2>&1 | tee -a "scan-results/$service/trivy-config.txt" || true
             fi
           done
 

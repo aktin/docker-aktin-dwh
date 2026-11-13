@@ -5,6 +5,9 @@ on:
     - cron: '0 1 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   check-database:
     uses: ./.github/workflows/check-base-image.yml

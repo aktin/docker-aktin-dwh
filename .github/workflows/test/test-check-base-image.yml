@@ -3,6 +3,9 @@ name: test-check-base-image
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   test-database:
     uses: ./.github/workflows/check-base-image.yml

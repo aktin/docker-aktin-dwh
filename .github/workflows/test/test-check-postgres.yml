@@ -7,6 +7,4 @@ jobs:
   test-postgresql:
     uses: ./.github/workflows/check-base-image.yml
     with:
-      container: postgres
-      version_key: POSTGRESQL_VERSION
       image: database

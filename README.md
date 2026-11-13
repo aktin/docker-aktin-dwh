@@ -180,6 +180,7 @@ The build script accepts the following arguments:
 * `--force-rebuild`: Force a complete image recreation
 * `--use-main-branch`: Use current version from main branch instead of release versions
 * `--create-latest`: Create additional containers tagged as 'latest'
+* `--service <name>`: Build only this image (`database`, `wildfly` or `httpd`), repeatable. Without it all three are built
 
 3. Run the container locally after the build finished using:
 ```bash

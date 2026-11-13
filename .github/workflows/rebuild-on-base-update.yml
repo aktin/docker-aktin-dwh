@@ -6,49 +6,56 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-postgres:
+  check-database:
     uses: ./.github/workflows/check-base-image.yml
     with:
-      container: postgres
-      version_key: POSTGRESQL_VERSION
       image: database
 
-  check-ubuntu:
+  check-wildfly:
     uses: ./.github/workflows/check-base-image.yml
     with:
-      container: ubuntu
-      version_key: UBUNTU_VERSION
       image: wildfly
 
-  check-php:
+  check-httpd:
     uses: ./.github/workflows/check-base-image.yml
     with:
-      container: php
-      version_key: APACHE_VERSION
       image: httpd
 
   gate:
-    needs: [ check-postgres, check-ubuntu, check-php ]
+    needs: [ check-database, check-wildfly, check-httpd ]
     runs-on: ubuntu-latest
     outputs:
       any_update: ${{ steps.eval.outputs.any_update }}
+      build_args: ${{ steps.eval.outputs.build_args }}
+      images: ${{ steps.eval.outputs.images }}
     steps:
-      - name: Evaluate whether any base container changed
+      - name: Collect the images whose base container changed
         id: eval
         env:
-          UPDATES: >-
-            ${{ needs.check-postgres.outputs.update }}
-            ${{ needs.check-ubuntu.outputs.update }}
-            ${{ needs.check-php.outputs.update }}
+          DATABASE: ${{ needs.check-database.outputs.update }}
+          WILDFLY: ${{ needs.check-wildfly.outputs.update }}
+          HTTPD: ${{ needs.check-httpd.outputs.update }}
         run: |
           set -euo pipefail
-          if [[ "$UPDATES" == *true* ]]; then
+          build_args=""
+          images=()
+          for service in database wildfly httpd; do
+            update="${service^^}"
+            if [[ "${!update}" == "true" ]]; then
+              build_args+=" --service ${service}"
+              images+=("\"ghcr.io/aktin/notaufnahme-dwh-${service}\"")
+            fi
+          done
+          if [[ ${#images[@]} -gt 0 ]]; then
             echo "any_update=true" >> "$GITHUB_OUTPUT"
           else
             echo "any_update=false" >> "$GITHUB_OUTPUT"
           fi
+          echo "build_args=${build_args}" >> "$GITHUB_OUTPUT"
+          echo "images=[$(IFS=,; echo "${images[*]}")]" >> "$GITHUB_OUTPUT"
 
-  # Rebuilds the three images with src/build.sh, pushes, signs and attests them.
+  # Rebuilds the images whose base container changed with src/build.sh, pushes,
+  # signs and attests them.
   images:
     needs: gate
     if: ${{ needs.gate.outputs.any_update == 'true' }}
@@ -62,10 +69,7 @@ jobs:
       build-command: |
         export JAVA_HOME="$JAVA_HOME_21_X64"
         export PATH="$JAVA_HOME/bin:$PATH"
-        ./src/build.sh --create-latest
-      images: >-
-        ["ghcr.io/aktin/notaufnahme-dwh-database",
-        "ghcr.io/aktin/notaufnahme-dwh-wildfly",
-        "ghcr.io/aktin/notaufnahme-dwh-httpd"]
+        ./src/build.sh --create-latest ${{ needs.gate.outputs.build_args }}
+      images: ${{ needs.gate.outputs.images }}
       cache-path: src/downloads/
       cache-key-files: src/resources/versions

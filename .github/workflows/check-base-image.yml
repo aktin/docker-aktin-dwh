@@ -3,16 +3,8 @@ name: check-base-image
 on:
   workflow_call:
     inputs:
-      container:
-        description: "The container image name on Docker Hub"
-        required: true
-        type: string
-      version_key:
-        description: "The variable name to extract the version from 'src/resources/versions'"
-        required: true
-        type: string
       image:
-        description: "The published image built on this container (database, wildfly or httpd)"
+        description: "The image to check (database, wildfly or httpd)"
         required: true
         type: string
     outputs:
@@ -26,29 +18,31 @@ jobs:
     outputs:
       update: ${{ steps.check.outputs.update }}
     steps:
-      - name: Checkout versions file
+      - name: Checkout Dockerfile and versions file
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           sparse-checkout: |
+            src/docker/${{ inputs.image }}/Dockerfile
             src/resources/versions
           sparse-checkout-cone-mode: false
           fetch-depth: 1
       - name: Compare digests
         id: check
         env:
-          CONTAINER: ${{ inputs.container }}
-          VERSION_KEY: ${{ inputs.version_key }}
+          DOCKERFILE: src/docker/${{ inputs.image }}/Dockerfile
           IMAGE: ghcr.io/aktin/notaufnahme-dwh-${{ inputs.image }}:latest
         run: |
           set -euo pipefail
-          version="$(grep -E "^${VERSION_KEY}=" src/resources/versions | cut -d= -f2)"
-          if [[ -z "$version" ]]; then
-            echo "Version not found for key: ${VERSION_KEY}" >&2
-            exit 1
-          fi
-          current_digest="$(docker buildx imagetools inspect "docker.io/library/${CONTAINER}:${version}" --format '{{.Manifest.Digest}}')"
+          # The FROM line names the base image, its version placeholder is resolved from the versions file
+          . src/resources/versions
+          base="$(awk '$1 == "FROM" { print $2; exit }' "$DOCKERFILE")"
+          while [[ "$base" =~ __([A-Z0-9_]+)__ ]]; do
+            key="${BASH_REMATCH[1]}"
+            base="${base/__${key}__/${!key}}"
+          done
+          current_digest="$(docker buildx imagetools inspect "docker.io/library/${base}" --format '{{.Manifest.Digest}}')"
           built_digest="$(docker buildx imagetools inspect "$IMAGE" --format '{{index .Image.Config.Labels "org.opencontainers.image.base.digest"}}')"
-          echo "${CONTAINER}:${version} is ${current_digest}, ${IMAGE} was built on ${built_digest:-<no label>}"
+          echo "${base} is ${current_digest}, ${IMAGE} was built on ${built_digest:-<no label>}"
           if [[ "$current_digest" != "$built_digest" ]]; then
             echo "update=true" >> "$GITHUB_OUTPUT"
           else

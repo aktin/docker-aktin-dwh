@@ -50,7 +50,7 @@ main() {
   dry_run pull_request scan-codeql.yml --eventpath "${DIR_TEST}/pull-request.json"
   dry_run pull_request scan-dependencies.yml --eventpath "${DIR_TEST}/pull-request.json"
   dry_run schedule scan-scorecard.yml
-  dry_run schedule scan-security.yml
+  dry_run schedule scan-image.yml
   dry_run schedule rebuild-on-base-update.yml
 
   run pull_request verify.yml --eventpath "${DIR_TEST}/pull-request.json"

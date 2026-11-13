@@ -12,7 +12,7 @@ What runs on GitHub for this repository and which rules protect `main`, `dev` an
 
 ## Workflows
 
-`verify.yml`, `scan-codeql.yml`, `scan-dependencies.yml`, `scan-scorecard.yml` and `scan-security.yml` only hold the triggers. Their jobs live as reusable workflows in [aktin-github-scripts](https://github.com/aktin/aktin-github-scripts/tree/main/.github/workflows) and are called at `@main`.
+`verify.yml`, `scan-codeql.yml`, `scan-dependencies.yml`, `scan-scorecard.yml` and `scan-image.yml` only hold the triggers. Their jobs live as reusable workflows in [aktin-github-scripts](https://github.com/aktin/aktin-github-scripts/tree/main/.github/workflows) and are called at `@main`.
 
 What each workflow does and when it runs. Schedules are in UTC and run on `main`:
 
@@ -22,7 +22,7 @@ What each workflow does and when it runs. Schedules are in UTC and run on `main`
 | `scan-dependencies.yml`          | yes                             |                |                 |              | Compares the dependencies before and after the pull request and fails when a newly added one has a known vulnerability of severity high or critical |
 | `scan-codeql.yml`                     | yes                             | yes            |                 |              | Scans the workflow files for security mistakes, for example script injection or token permissions that are too broad, and reports the findings in the Security tab. Dockerfiles, shell scripts and SQL are not scanned |
 | `scan-scorecard.yml`                  |                                 | yes            | Mondays 04:00   |              | Rates the security practices of the repository, for example branch rules, pinned actions, token permissions and code review, publishes the score to OpenSSF and feeds the badge in the root README. It changes nothing |
-| `scan-security.yml` | | | every day 02:00 | manual start | Scans the repository with Trivy for secrets, misconfigured Dockerfiles, compose and workflow files and vulnerable dependencies, and the three published `latest` images for known vulnerabilities. Findings of severity high and critical appear in the Security tab. The run does not fail on findings |
+| `scan-image.yml` | | | every day 02:00 | manual start | Scans the three published `latest` images with Trivy for known vulnerabilities. Findings of severity high and critical appear in the Security tab. The run does not fail on findings |
 | `rebuild-on-base-update.yml` |                                 |                | every day 01:00 | manual start | Reads the base image from the `FROM` line of each Dockerfile, asks Docker Hub for its current digest and compares it with the `org.opencontainers.image.base.digest` label of the published `latest` image. When one differs it starts the shared `build-publish-image.yml`, which runs `src/build.sh` for the affected images only and pushes, signs and attests them |
 | `release.yml`        |                                 |                |                 | tag `v*`     | Starts the shared `build-publish-image.yml`, which runs `src/build.sh`, pushes, signs and attests the images and attests `compose.yml`. Then it commits the generated `compose.yml` to the branch `generated` and starts the shared `publish-release.yml`, which writes the release notes from the commit history with git-cliff and creates the GitHub Release with `compose.yml` and the SBOM of each image attached |
 

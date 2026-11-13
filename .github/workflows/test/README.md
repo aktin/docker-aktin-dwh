@@ -25,7 +25,7 @@ A dry run resolves every job of a workflow and every call of a shared workflow w
 | `scan-codeql.yml`            | yes     | no                                       |
 | `scan-dependencies.yml`      | yes     | no                                       |
 | `scan-scorecard.yml`         | yes     | no                                       |
-| `scan-security.yml`          | yes     | no                                       |
+| `scan-image.yml`             | yes     | no                                       |
 | `rebuild-on-base-update.yml` | yes     | no                                       |
 | `check-base-image.yml`       | yes     | yes, through `test-check-base-image.yml` |
 | `release.yml`                | no      | no                                       |

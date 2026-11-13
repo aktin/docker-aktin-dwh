@@ -1,0 +1,21 @@
+name: scan-security
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    permissions:
+      contents: read
+      security-events: write
+    uses: aktin/aktin-github-scripts/.github/workflows/scan-security.yml@main
+    with:
+      images: >-
+        ["ghcr.io/aktin/notaufnahme-dwh-database:latest",
+        "ghcr.io/aktin/notaufnahme-dwh-wildfly:latest",
+        "ghcr.io/aktin/notaufnahme-dwh-httpd:latest"]

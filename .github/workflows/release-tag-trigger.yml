@@ -9,74 +9,61 @@ permissions:
   contents: read
 
 jobs:
-  verify:
-    uses: aktin/aktin-github-scripts/.github/workflows/verify-common.yml@main
-
-  prepare:
-    needs: verify
-    uses: ./.github/workflows/prepare-cache.yml
-
-  build-deploy:
-    needs: prepare
+  # Builds the three images with src/build.sh, pushes, signs and attests them
+  # and hands compose.yml and the image SBOMs to the release.
+  images:
     permissions:
       contents: read
       packages: write
       id-token: write
       attestations: write
-    uses: ./.github/workflows/build-deploy-docker.yml
+    uses: aktin/aktin-github-scripts/.github/workflows/publish-image.yml@main
     with:
-      cache_key: ${{ needs.prepare.outputs.cache_key }}
+      build-command: |
+        export JAVA_HOME="$JAVA_HOME_21_X64"
+        export PATH="$JAVA_HOME/bin:$PATH"
+        ./src/build.sh --create-latest
+      images: >-
+        ["ghcr.io/aktin/notaufnahme-dwh-database",
+        "ghcr.io/aktin/notaufnahme-dwh-wildfly",
+        "ghcr.io/aktin/notaufnahme-dwh-httpd"]
+      upload-release-files: src/build/compose.yml
+      cache-path: src/downloads/
+      cache-key-files: src/resources/versions
 
-  release:
-    needs: build-deploy
+  # The branch generated holds only compose.yml, one commit per release,
+  # so its history shows what changed between releases.
+  compose-commit:
+    needs: images
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout with history
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Generate release notes
-        id: notes
-        uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
-        with:
-          config: cliff.toml
-          args: --latest --strip all
-
-      - name: Download compose artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: compose-yml
-          path: src/build
-
-      # The branch generated holds only compose.yml, one commit per release,
-      # so its history shows what changed between releases.
       - name: Checkout generated branch
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           ref: generated
-          path: generated-branch
+
+      - name: Download compose artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-files
 
       - name: Commit compose.yml to generated branch
-        working-directory: generated-branch
         env:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          cp -f ../src/build/compose.yml compose.yml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add compose.yml
           git commit -m "chore: update compose.yml for ${TAG}" || exit 0
           git push
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
-        with:
-          files: src/build/compose.yml
-          body: ${{ steps.notes.outputs.content }}
-          fail_on_unmatched_files: true
-          make_latest: true
+  publish:
+    needs: compose-commit
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    uses: aktin/aktin-github-scripts/.github/workflows/publish-release.yml@main

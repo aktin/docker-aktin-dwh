@@ -58,15 +58,21 @@ docker compose up -d
 ```
 
 ### Verification of Container Signatures
-All our Docker images are cryptographically signed using [Cosign](https://docs.sigstore.dev/cosign/signing/overview/)  and come with attached SBOMs (CycloneDX) and build provenance attestations (SLSA). You can check that what you run matches what we built:
+Every Docker image is published with a build provenance attestation (SLSA) and an SBOM attestation (CycloneDX). Both are signed and stored at GitHub. You can check that what you run matches what we built:
 
 #### Prerequisites
-Check cosign installation. If needed, install it following [this instruction](https://docs.sigstore.dev/cosign/system_config/installation/).
+Check the GitHub CLI installation. If needed, install it following [this instruction](https://cli.github.com/).
 ```bash
-cosign version
+gh --version
 
 # Example output:
-# GitVersion:    v2.5.3
+# gh version 2.102.1 (2026-10-20)
+# https://github.com/cli/cli/releases/tag/v2.102.1
+```
+
+Log in with your GitHub account. The command guides you through the login:
+```bash
+gh auth login
 ```
 
 #### 1. Get the Image Digest
@@ -89,18 +95,74 @@ docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/aktin/notaufnahme-dwh
 # ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d
 ```
 
-#### 2. Verify Image Signature
-Check that the image was built by our GitHub Actions workflow and signed via Sigstore. If valid, you’ll see output confirming the signature and the trusted GitHub Repo. For more information, refer to the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) and the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/). Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
+#### 2. Verify Build Provenance
+The build provenance attestation proves that the image was built on GitHub from this repository. `--repo` names the repository that built the image. `--signer-repo` names the repository of the shared AKTIN workflow that created the attestation. For more information, refer to the [GitHub CLI manual](https://cli.github.com/manual/gh_attestation_verify).
+```bash
+gh attestation verify oci://ghcr.io/aktin/notaufnahme-dwh-<service>@<digest> \
+--repo aktin/docker-aktin-dwh \
+--signer-repo aktin/aktin-github-scripts
+
+# Example command:
+# gh attestation verify oci://ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d \
+# --repo aktin/docker-aktin-dwh \
+# --signer-repo aktin/aktin-github-scripts
+
+# Example output (shortened):
+# ✓ Verification succeeded!
+#
+# - Attestation #1
+#   - Build repo:..... aktin/docker-aktin-dwh
+#   - Build workflow:. .github/workflows/rebuild-on-base-update.yml@refs/heads/main
+#   - Signer repo:.... aktin/aktin-github-scripts
+#   - Signer workflow: .github/workflows/build-publish-image.yml@refs/heads/main
+```
+
+`Build workflow` names `release.yml` for an image of a release. It names `rebuild-on-base-update.yml` for an image that was rebuilt because its base image changed.
+
+#### 3. Inspect SBOM
+Each image has a Software Bill of Materials as a second attestation. The following command verifies it and writes the CycloneDX SBOM in JSON to the file `sbom.cdx.json`. You can then parse it with SBOM tooling or import it into vulnerability scanners.
+```bash
+gh attestation verify oci://ghcr.io/aktin/notaufnahme-dwh-<service>@<digest> \
+--repo aktin/docker-aktin-dwh \
+--signer-repo aktin/aktin-github-scripts \
+--predicate-type https://cyclonedx.org/bom \
+--format json \
+--jq '.[].verificationResult.statement.predicate' > sbom.cdx.json
+
+# Example command:
+# gh attestation verify oci://ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d \
+# --repo aktin/docker-aktin-dwh \
+# --signer-repo aktin/aktin-github-scripts \
+# --predicate-type https://cyclonedx.org/bom \
+# --format json \
+# --jq '.[].verificationResult.statement.predicate' > sbom.cdx.json
+
+# Example content of sbom.cdx.json (shortened):
+# {"bomFormat":"CycloneDX","components":[...],...}
+```
+
+#### 4. Verify Image Signature
+Each image is also signed with [Cosign](https://docs.sigstore.dev/cosign/signing/overview/). Check the cosign installation. If needed, install it following [this instruction](https://docs.sigstore.dev/cosign/system_config/installation/).
+```bash
+cosign version
+
+# Example output:
+# GitVersion:    v2.5.3
+```
+
+Check that the image was signed by the shared AKTIN workflow during a build of this repository. If valid, you’ll see output confirming the signature. For more information, refer to the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) and the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/). Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
 ```bash
 cosign verify \
---certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
+--certificate-identity-regexp "^https://github\.com/aktin/aktin-github-scripts/\.github/workflows/.*" \
 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+--certificate-github-workflow-repository "aktin/docker-aktin-dwh" \
 ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
 
 # Example command:
 # cosign verify \
-# --certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
+# --certificate-identity-regexp "^https://github\.com/aktin/aktin-github-scripts/\.github/workflows/.*" \
 # --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+# --certificate-github-workflow-repository "aktin/docker-aktin-dwh" \
 # ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d
 
 # Example output:
@@ -109,55 +171,6 @@ ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
 #   - The cosign claims were validated
 #   - Existence of the claims in the transparency log was verified offline
 #   - The code-signing certificate was verified using trusted certificate authority certificates
-```
-
-#### 3. Inspect SBOM
-Each image has an attached Software Bill of Materials. The following command prints the SBOM in JSON. This prints the CycloneDX SBOM in JSON. You can then parse it with SBOM tooling or import it into vulnerability scanners.
-```bash
-cosign verify-attestation \
---type cyclonedx \
---certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
---certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
-
-# Example command:
-# cosign verify-attestation \
-# --type cyclonedx \
-# --certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
-# --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-# ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d
-
-# Example output:
-# {"payloadType":"application/vnd.in-toto+json","payload":"eyJfdHlwZSI...","signatures":[{"keyid":"","sig":"MEYCIQC..."}]}
-```
-
-#### 4. Verify Build Provenance
-Build provenance attestation proves the image was built from scratch in GitHub. The result will show the Git commit and build metadata. You can then trace the build back to our public repository.
-```bash
-cosign verify-attestation \
---type slsaprovenance1 \
---certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
---certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
-
-# Example command:
-# cosign verify-attestation \
-# --type slsaprovenance1 \
-# --certificate-identity-regexp "^https://github\.com/aktin/docker-aktin-dwh/\.github/workflows/.*" \
-# --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-# ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d
-
-# Example output:
-# {"payloadType":"application/vnd.in-toto+json","payload":"eyJfdHlwZSI...","signatures":[{"keyid":"","sig":"MEUCIQC..."}]}
-```
-
-#### Attention
-The SBOM and build provenance are published as in-toto attestations wrapped in DSSE envelopes. The actual attestation content is base64-encoded in the `payload` field of the JSON output. You can download the attestations directly from the OCI registry and decode the embedded payload using the following command. The resulting file will contain both the SBOM and the SLSA provenance:
-```bash
-cosign download attestation ghcr.io/aktin/notaufnahme-dwh-<service>@<digest> | jq -r '.payload' | base64 -d | jq > output.json
-
-# Example command:
-# cosign download attestation ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d | jq -r '.payload' | base64 -d | jq > output.json
 ```
 
 ## For Developers

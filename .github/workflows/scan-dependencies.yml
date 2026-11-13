@@ -9,4 +9,7 @@ permissions:
 
 jobs:
   review:
+    permissions:
+      contents: read
+      pull-requests: write
     uses: aktin/aktin-github-scripts/.github/workflows/scan-dependencies.yml@main

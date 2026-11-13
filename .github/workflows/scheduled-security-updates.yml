@@ -48,15 +48,24 @@ jobs:
             echo "any_update=false" >> "$GITHUB_OUTPUT"
           fi
 
-  prepare:
+  # Rebuilds the three images with src/build.sh, pushes, signs and attests them.
+  images:
     needs: gate
     if: ${{ needs.gate.outputs.any_update == 'true' }}
-    uses: ./.github/workflows/prepare-cache.yml
-
-  build-deploy:
-    needs: [ gate, prepare ]
-    if: ${{ needs.gate.outputs.any_update == 'true' }}
-    uses: ./.github/workflows/build-deploy-docker.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: aktin/aktin-github-scripts/.github/workflows/publish-image.yml@main
     with:
-      cache_key: ${{ needs.prepare.outputs.cache_key }}
-
+      build-command: |
+        export JAVA_HOME="$JAVA_HOME_21_X64"
+        export PATH="$JAVA_HOME/bin:$PATH"
+        ./src/build.sh --create-latest
+      images: >-
+        ["ghcr.io/aktin/notaufnahme-dwh-database",
+        "ghcr.io/aktin/notaufnahme-dwh-wildfly",
+        "ghcr.io/aktin/notaufnahme-dwh-httpd"]
+      cache-path: src/downloads/
+      cache-key-files: src/resources/versions

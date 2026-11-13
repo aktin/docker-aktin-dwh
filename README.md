@@ -19,7 +19,7 @@ A containerized deployment of the AKTIN emergency department system using Docker
 curl -LO https://github.com/aktin/docker-aktin-dwh/releases/latest/download/compose.yml
 ```
 
-2. In the folder of the `compose.yml` script create a secret file with a strong password:
+2. In the folder of the `compose.yml` file create a secret file with a strong password:
 ```bash
 echo 'mysecretpassword' > secret.txt
 ```
@@ -182,7 +182,7 @@ git clone https://github.com/aktin/docker-aktin-dwh.git
 cd docker-aktin-dwh 
 ```
 
-2. Run the build script:
+2. Run the build script. It needs `curl`, `unzip`, `docker`, `java` and `mvn`:
 ```bash
 ./src/build.sh
 ```
@@ -190,23 +190,35 @@ cd docker-aktin-dwh
 The build script accepts the following arguments:
 
 * `--cleanup`: Remove build files and downloads after image creation
-* `--force-rebuild`: Force a complete image recreation
-* `--use-main-branch`: Use current version from main branch instead of release versions
-* `--create-latest`: Create additional containers tagged as 'latest'
+* `--force-rebuild`: Build the images without the Docker build cache
+* `--use-main-branch`: Download the main branch of the AKTIN packages `debian-i2b2-pkg` and `debian-dwh-pkg` instead of the versions set in `src/resources/versions`
+* `--create-latest`: Also tag the built images as `latest`
 * `--service <name>`: Build only this image (`database`, `wildfly` or `httpd`), repeatable. Without it all three are built
+* `--help`: Print the list of arguments
 
-3. Run the container locally after the build finished using:
 ```bash
-cd build/
-docker compose -f compose.dev.yml up -d 
+./src/build.sh --service <name>
+
+# Example command:
+# ./src/build.sh --service database --service httpd
 ```
 
-The WildFly Docker container can run in development mode using the `DEV_MODE` environment variable. When set, the WildFly Docker will use a customized configuration file with logging of CDA imports and rscript executions.
-
-When `DEV_MODE=true`, the `BROKER_API_KEY` environment variable is required and must be set in a `.env` file next to `compose.dev.yml`:
+3. Go to the build folder. Create the secret file and the `.env` file with the API key of the AKTIN test broker:
 ```bash
-echo "BROKER_API_KEY=<your-api-key>" > build/.env
+cd src/build/
+echo 'mysecretpassword' > secret.txt
+echo "BROKER_API_KEY=<your-api-key>" > .env
+
+# Example command:
+# echo "BROKER_API_KEY=abc123" > .env
 ```
+
+4. Start the containers:
+```bash
+docker compose -f compose.dev.yml up -d
+```
+
+`compose.dev.yml` starts WildFly in development mode (`DEV_MODE=true`). In development mode WildFly uses a customized configuration file with logging of CDA imports and rscript executions and needs `BROKER_API_KEY`. The database starts in development mode only when `.env` holds `DEV_MODE=true`. It then uses a separate test cluster with test patients and leaves the data volume untouched.
 
 ## Commits and releases
 
@@ -218,7 +230,9 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org), enfo
 
 Allowed types are `feat fix docs style refactor perf test chore`. The subject starts lowercase, has no trailing period, and every line of the message stays at most 100 characters. Pull requests into `dev` are squash merged, so one conventional subject per PR lands on `dev`. `dev` is merged into `main` with a merge commit.
 
-A release is a tag `v*` on `main`. The release workflow builds, signs and attests the images, writes the release notes from the commit history with git-cliff and attaches the generated `compose.yml` to the GitHub Release. The same file is committed to the branch `generated`, one commit per release, so its [history](https://github.com/aktin/docker-aktin-dwh/commits/generated/compose.yml) shows what changed between releases.
+A release is a tag `v*` on `main`. The tag starts the release workflow, which is described in [.github/workflows/README.md](.github/workflows/README.md#workflows). It publishes the three images and a GitHub Release with the release notes, the generated `compose.yml` and one SBOM file per image. The same `compose.yml` is committed to the branch `generated`, one commit per release, so its [history](https://github.com/aktin/docker-aktin-dwh/commits/generated/compose.yml) shows what changed between releases.
+
+The tags of the images do not come from the git tag. `src/build.sh` reads them from `src/resources/versions`: the value of `DWH_GITHUB_TAG`, then `-docker`, then the revision of the image, for example `1.7rc1-1-docker1`.
 
 ## Checks and gates
 
@@ -229,7 +243,7 @@ Three layers. Each layer trusts the one before it a little less. The first layer
 > [!CAUTION]
 > Run `lefthook install` once after cloning, before your first commit. Without it no git hook runs on your machine.
 
-You need the [lefthook](https://lefthook.dev) binary for the git hooks (`apt install lefthook`, `brew install lefthook`, or a release download) plus `python3`, `gitleaks`, `actionlint`, `hadolint` and `shellcheck`. All hooks come from aktin-github-scripts. A missing tool fails the commit, actionlint, hadolint and shellcheck are only called when a workflow file, Dockerfile or shell script is staged.
+You need the [lefthook](https://lefthook.dev) binary in version 2.0.5 or newer for the git hooks (`apt install lefthook`, `brew install lefthook`, or a release download) plus `python3`, `gitleaks`, `actionlint`, `hadolint` and `shellcheck`. All hooks come from [aktin-github-scripts](https://github.com/aktin/aktin-github-scripts#git-hooks) through `lefthook.yml`. Its README lists every hook and its limits. A missing tool fails the commit, actionlint, hadolint and shellcheck are only called when a workflow file, Dockerfile or shell script is staged.
 
 | When       | What runs                                                                                                                                                 | Blocks     |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|------------|
@@ -264,5 +278,10 @@ These variables can be defined in a `.env` file and are used throughout `compose
 - `HTTP_PORT`: Exposed port for the Apache HTTPD server (default: `80`)
 - `DB_HOST`: Hostname of the database container (default: `database`)
 - `DB_PORT`: Port to reach PostgreSQL (default: `5432`)
-- `DEV_MODE`: Enables WildFly and Database dev mode (default: `false`). WildFly is restarted automatically when Compose restarts or recreates the database service as part of `docker compose up -d` or `docker compose restart database`.  This does not happen when only the database is targeted, e.g. `docker compose up -d --force-recreate database`, or when the database container crashes and is restarted by the restart policy. In these cases WildFly drops the stale connections after a short time, or you can run `docker compose restart wildfly`.
-- `BROKER_API_KEY`: API key for the AKTIN broker; required when `DEV_MODE=true`
+- `TZ`: Time zone of the WildFly container (default: `Europe/Berlin`)
+- `LANG` and `LC_ALL`: Locale of the WildFly container (default: `de_DE.UTF-8`). A value that is set in your shell wins over the `.env` file, and most shells set `LANG`
+- `DATABASE_CONTAINER_VERSION`, `WILDFLY_CONTAINER_VERSION` and `HTTPD_CONTAINER_VERSION`: Tag of the database, WildFly and httpd image (default: the tag of the release the `compose.yml` belongs to)
+- `DEV_MODE`: Enables WildFly and Database dev mode (default: `false`). Use it with `compose.dev.yml` only, see [For Developers](#for-developers)
+- `BROKER_API_KEY`: API key for the AKTIN test broker. Only `compose.dev.yml` reads it. Required when WildFly runs with `DEV_MODE=true`
+
+WildFly is restarted automatically when Compose restarts or recreates the database service as part of `docker compose up -d` or `docker compose restart database`. This does not happen when only the database is targeted, e.g. `docker compose up -d --force-recreate database`, or when the database container crashes and is restarted by the restart policy. In these cases WildFly drops the stale connections after a short time, or you can run `docker compose restart wildfly`.

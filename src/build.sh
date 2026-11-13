@@ -16,18 +16,21 @@ for cmd in curl unzip docker java mvn; do
 done
 
 readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
+readonly ALL_SERVICES=("database" "wildfly" "httpd")
 
 CLEANUP=false
 FORCE_REBUILD=false
 USE_MAIN=false
 CREATE_LATEST=false
+SERVICES=()
 
 usage() {
-  echo "Usage: $0 [--cleanup] [--force-rebuild] [--use-main-branch] [--create-latest]" >&2
+  echo "Usage: $0 [--cleanup] [--force-rebuild] [--use-main-branch] [--create-latest] [--service <name>]..." >&2
   echo "  --cleanup          Optional: Remove build files and downloads after image creation" >&2
   echo "  --force-rebuild    Optional: Force a complete image recreation" >&2
   echo "  --use-main-branch  Optional: Download the current main branch from the git repositories instead of the specific release versions" >&2
   echo "  --create-latest    Optional: Create additional containers tagged as 'latest'" >&2
+  echo "  --service <name>   Optional: Build only this image (${ALL_SERVICES[*]}), repeatable. Default builds all" >&2
   exit 1
 }
 
@@ -49,6 +52,14 @@ while [[ $# -gt 0 ]]; do
       CREATE_LATEST=true
       shift
       ;;
+    --service)
+      if [[ $# -lt 2 || ! " ${ALL_SERVICES[*]} " == *" $2 "* ]]; then
+        echo "Error: --service expects one of: ${ALL_SERVICES[*]}" >&2
+        usage
+      fi
+      SERVICES+=("$2")
+      shift 2
+      ;;
     -h|--help)
       usage
       ;;
@@ -58,6 +69,10 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ ${#SERVICES[@]} -eq 0 ]]; then
+  SERVICES=("${ALL_SERVICES[@]}")
+fi
 
 # Define relevant directories as absolute paths
 DIR_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -72,9 +87,20 @@ set -a
 . "${DIR_RESOURCES}/versions"
 set +a
 
-# Digest of a Docker Hub library image, recorded as image label so the nightly check can compare it against the current base image
-base_digest() {
-  docker buildx imagetools inspect "docker.io/library/$1" --format '{{.Manifest.Digest}}'
+# Writes the digest of the base image named in the FROM line of a Dockerfile into its label, so the nightly check can compare it against the
+# current base image
+set_base_digest() {
+  local dockerfile="$1"
+  local base
+  base="$(awk '$1 == "FROM" { print $2; exit }' "${dockerfile}")"
+  local digest
+  digest="$(docker buildx imagetools inspect "docker.io/library/${base}" --format '{{.Manifest.Digest}}')"
+  sed -i "s|__BASE_DIGEST__|${digest}|g" "${dockerfile}"
+}
+
+# True if the given service was selected for this build
+is_selected() {
+  [[ " ${SERVICES[*]} " == *" $1 "* ]]
 }
 
 init_build_environment() {
@@ -209,8 +235,8 @@ prepare_postgresql_docker(){
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
-      -e "s|__BASE_DIGEST__|$(base_digest "postgres:${POSTGRESQL_VERSION}")|g" \
       "${DIR_DOCKER}/database/Dockerfile" > "${build_dir}/Dockerfile"
+  set_base_digest "${build_dir}/Dockerfile"
 }
 
 # TODO: Delete duplicates from proxy.php blacklist/whitelist?
@@ -245,8 +271,8 @@ prepare_apache2_docker() {
   sed -e "s|__APACHE_VERSION__|${APACHE_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
-      -e "s|__BASE_DIGEST__|$(base_digest "php:${APACHE_VERSION}")|g" \
       "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
+  set_base_digest "${build_dir}/Dockerfile"
 }
 
 prepare_wildfly_docker() {
@@ -314,8 +340,8 @@ prepare_wildfly_docker() {
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
       -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" \
-      -e "s|__BASE_DIGEST__|$(base_digest "ubuntu:${UBUNTU_VERSION}")|g" \
       "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
+  set_base_digest "${build_dir}/Dockerfile"
 }
 
 prepare_docker_compose() {
@@ -347,8 +373,9 @@ prepare_docker_compose() {
 
 cleanup_old_docker_images() {
   echo "Cleaning up Docker resources..."
+  local service
   local images
-  images=$(docker images "${IMAGE_NAMESPACE}-*" --format "{{.Repository}}:{{.Tag}}")
+  images=$(for service in "${SERVICES[@]}"; do docker images "${IMAGE_NAMESPACE}-${service}" --format "{{.Repository}}:{{.Tag}}"; done)
   if [ -n "$images" ]; then
     # Remove any containers using these images
     for image in $images; do
@@ -364,29 +391,11 @@ cleanup_old_docker_images() {
   else
     echo "No project images found to cleanup"
   fi
-
-  local base_images=(
-    "postgres:${POSTGRESQL_VERSION}"
-    "ubuntu:${UBUNTU_VERSION}"
-    "php:${APACHE_VERSION}"
-  )
-  for base_image in "${base_images[@]}"; do
-    if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^${base_image}$"; then
-      echo "Removing base image ${base_image}..."
-      docker rmi "${base_image}"
-    fi
-  done
-}
-
-pull_base_images() {
-  echo "Pulling base images..."
-  docker pull postgres:${POSTGRESQL_VERSION}
-  docker pull ubuntu:${UBUNTU_VERSION}
-  docker pull php:${APACHE_VERSION}
 }
 
 build_docker_images() {
   echo "Building Docker images..."
+  local service
   local cwd
   cwd="$(pwd)"
   cd "${DIR_BUILD}"
@@ -398,17 +407,14 @@ build_docker_images() {
   else
     BUILD_ARGS=""
   fi
-  BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") docker compose -f compose.dev.yml build ${BUILD_ARGS}
+  BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") docker compose -f compose.dev.yml build --pull ${BUILD_ARGS} "${SERVICES[@]}"
 
   # Create latest tagged images if requested
   if [ "${CREATE_LATEST}" = true ]; then
     echo "Creating latest tagged images..."
-    local services=("database" "wildfly" "httpd")
-    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_REVISION}" "${HTTPD_CONTAINER_REVISION}")
-    for i in "${!services[@]}"; do
-      local service="${services[$i]}"
-      local version="${versions[$i]}"
-      local versioned_tag="${IMAGE_NAMESPACE}-${service}:${DWH_GITHUB_TAG}-docker${version}"
+    for service in "${SERVICES[@]}"; do
+      local versioned_tag
+      versioned_tag="$(docker compose -f compose.dev.yml config --images | grep "^${IMAGE_NAMESPACE}-${service}:")"
       local latest_tag="${IMAGE_NAMESPACE}-${service}:latest"
       docker tag "${versioned_tag}" "${latest_tag}"
     done
@@ -417,7 +423,9 @@ build_docker_images() {
   cd "${cwd}"
   if [[ "${CLEANUP}" == true ]]; then
     echo "Cleaning up build artifacts..."
-    rm -r "${DIR_BUILD}/"{database,wildfly,httpd}
+    for service in "${SERVICES[@]}"; do
+      rm -r "${DIR_BUILD:?}/${service}"
+    done
     [[ "${DIR_DOWNLOADS}" != "/" && -n "${DIR_DOWNLOADS}" ]] && rm -rf "${DIR_DOWNLOADS}"
   fi
 }
@@ -428,12 +436,11 @@ main() {
   download_artifacts
   extract_artifacts
   execute_deb_build_scripts
-  prepare_postgresql_docker
-  prepare_apache2_docker "wildfly"
-  prepare_wildfly_docker
+  if is_selected "database"; then prepare_postgresql_docker; fi
+  if is_selected "httpd"; then prepare_apache2_docker "wildfly"; fi
+  if is_selected "wildfly"; then prepare_wildfly_docker; fi
   prepare_docker_compose
   cleanup_old_docker_images
-  pull_base_images
   build_docker_images
 }
 

@@ -17,7 +17,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-    uses: aktin/aktin-github-scripts/.github/workflows/publish-image.yml@main
+    uses: aktin/aktin-github-scripts/.github/workflows/build-publish-image.yml@main
     with:
       build-command: |
         export JAVA_HOME="$JAVA_HOME_21_X64"
@@ -64,6 +64,4 @@ jobs:
     needs: compose-commit
     permissions:
       contents: write
-      id-token: write
-      attestations: write
     uses: aktin/aktin-github-scripts/.github/workflows/publish-release.yml@main

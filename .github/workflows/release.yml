@@ -1,4 +1,4 @@
-name: Create New Docker Release
+name: release
 
 on:
   push:

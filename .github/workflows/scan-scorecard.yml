@@ -1,4 +1,4 @@
-name: scorecard
+name: scan-scorecard
 
 on:
   schedule:

@@ -1,4 +1,4 @@
-name: dependency-review
+name: scan-dependencies
 
 on:
   pull_request:

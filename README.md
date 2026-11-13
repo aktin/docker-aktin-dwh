@@ -1,7 +1,7 @@
  # docker-aktin-dwh
 
-[![CI](https://github.com/aktin/docker-aktin-dwh/actions/workflows/ci.yml/badge.svg)](https://github.com/aktin/docker-aktin-dwh/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/aktin/docker-aktin-dwh/actions/workflows/codeql.yml/badge.svg)](https://github.com/aktin/docker-aktin-dwh/actions/workflows/codeql.yml)
+[![Verify](https://github.com/aktin/docker-aktin-dwh/actions/workflows/verify.yml/badge.svg)](https://github.com/aktin/docker-aktin-dwh/actions/workflows/verify.yml)
+[![CodeQL](https://github.com/aktin/docker-aktin-dwh/actions/workflows/scan-codeql.yml/badge.svg)](https://github.com/aktin/docker-aktin-dwh/actions/workflows/scan-codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/aktin/docker-aktin-dwh/badge)](https://securityscorecards.dev/viewer/?uri=github.com/aktin/docker-aktin-dwh)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](./LICENSE)
 [![Release](https://img.shields.io/github/v/release/aktin/docker-aktin-dwh)](https://github.com/aktin/docker-aktin-dwh/releases)

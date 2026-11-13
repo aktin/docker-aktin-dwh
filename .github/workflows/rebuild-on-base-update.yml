@@ -1,4 +1,4 @@
-name: Scheduled Base Container Security Updates
+name: rebuild-on-base-update
 
 on:
   schedule:
@@ -7,21 +7,21 @@ on:
 
 jobs:
   check-postgres:
-    uses: ./.github/workflows/check-container-update.yml
+    uses: ./.github/workflows/check-base-image.yml
     with:
       container: postgres
       version_key: POSTGRESQL_VERSION
       image: database
 
   check-ubuntu:
-    uses: ./.github/workflows/check-container-update.yml
+    uses: ./.github/workflows/check-base-image.yml
     with:
       container: ubuntu
       version_key: UBUNTU_VERSION
       image: wildfly
 
   check-php:
-    uses: ./.github/workflows/check-container-update.yml
+    uses: ./.github/workflows/check-base-image.yml
     with:
       container: php
       version_key: APACHE_VERSION

@@ -1,4 +1,4 @@
-name: Check Base Container
+name: check-base-image
 
 on:
   workflow_call:

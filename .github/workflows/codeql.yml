@@ -17,6 +17,6 @@ concurrency:
 
 jobs:
   analyze:
-    uses: aktin/aktin-github-scripts/.github/workflows/codeql.yml@main
+    uses: aktin/aktin-github-scripts/.github/workflows/scan-codeql.yml@main
     with:
       languages: actions

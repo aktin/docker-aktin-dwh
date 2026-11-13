@@ -14,4 +14,4 @@ jobs:
       security-events: write
       id-token: write
       contents: read
-    uses: aktin/aktin-github-scripts/.github/workflows/scorecard.yml@main
+    uses: aktin/aktin-github-scripts/.github/workflows/scan-scorecard.yml@main

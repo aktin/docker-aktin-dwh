@@ -9,4 +9,4 @@ permissions:
 
 jobs:
   review:
-    uses: aktin/aktin-github-scripts/.github/workflows/dependency-review.yml@main
+    uses: aktin/aktin-github-scripts/.github/workflows/scan-dependencies.yml@main

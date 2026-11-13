@@ -13,7 +13,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: aktin/aktin-github-scripts/.github/workflows/security-scan.yml@main
+    uses: aktin/aktin-github-scripts/.github/workflows/scan-security.yml@main
     with:
       images: >-
         ["ghcr.io/aktin/notaufnahme-dwh-database:latest",

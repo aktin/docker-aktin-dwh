@@ -58,10 +58,11 @@ jobs:
           echo "images=[$(IFS=,; echo "${images[*]}")]" >> "$GITHUB_OUTPUT"
 
   # Rebuilds the images whose base container changed with src/build.sh, pushes,
-  # signs and attests them.
+  # signs and attests them. Runs on main only, a manual start on another branch
+  # stops after the checks.
   images:
     needs: gate
-    if: ${{ needs.gate.outputs.any_update == 'true' }}
+    if: ${{ needs.gate.outputs.any_update == 'true' && github.ref == 'refs/heads/main' }}
     permissions:
       contents: read
       packages: write

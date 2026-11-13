@@ -4,11 +4,11 @@ What runs on GitHub for this repository and which rules protect `main`, `dev` an
 
 ## On a pull request to `dev` or `main`
 
-| Check             | Workflow                                                                      | Required to merge                                                                                                       |
-|-------------------|-------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `verify / verify` | `verify.yml` starts the shared `verify-common.yml`, which lints Dockerfiles, shell scripts and workflows | yes                                                                                                                     |
-| `review`          | `scan-dependencies.yml`, fails on new dependencies with high or critical CVEs | yes                                                                                                                     |
-| `analyze`         | `scan-codeql.yml`, CodeQL scan of the workflow files                               | not as a check, but the ruleset on `main` blocks the merge on CodeQL errors or security alerts of severity high or above |
+| Check               | Workflow                                                                                                 | Required to merge                                                                                                        |
+|---------------------|----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `verify / verify`   | `verify.yml` starts the shared `verify-common.yml`, which lints Dockerfiles, shell scripts and workflows | yes                                                                                                                      |
+| `review / review`   | `scan-dependencies.yml`, fails on new dependencies with high or critical CVEs                            | yes                                                                                                                      |
+| `analyze / analyze` | `scan-codeql.yml`, CodeQL scan of the workflow files                                                     | not as a check, but the ruleset on `main` blocks the merge on CodeQL errors or security alerts of severity high or above |
 
 ## Workflows
 
@@ -35,7 +35,7 @@ Branch ruleset `default` on `main`:
 | Rule                     | Meaning                                                                                                                              |
 |--------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | Pull request required    | No direct pushes. Merge commit only, 1 approval, code owner review, approval after the last push, all review threads resolved        |
-| Required checks          | `verify / verify` and `review` must pass                                                                                             |
+| Required checks          | `verify / verify` and `review / review` must pass                                                                                    |
 | Code scanning            | CodeQL must have analysed the head commit without errors or security alerts of severity high or above                                |
 | Signed commits           | Every commit on `main` is signed. Merge commits are signed by GitHub                                                                  |
 | No force push, no delete | History on `main` is append-only                                                                                                     |

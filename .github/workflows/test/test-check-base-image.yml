@@ -1,10 +1,10 @@
-name: Test Container Update Check
+name: test-check-base-image
 
 on:
   workflow_dispatch:
 
 jobs:
-  test-postgresql:
+  test-database:
     uses: ./.github/workflows/check-base-image.yml
     with:
       image: database

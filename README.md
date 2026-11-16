@@ -57,7 +57,7 @@ cd /opt/docker-deploy/aktin2
 docker compose up -d
 ```
 
-### Verification of Container Signatures
+### Verification of Container Images
 Every Docker image is published with a build provenance attestation (SLSA) and an SBOM attestation (CycloneDX). Both are signed and stored at GitHub. You can check that what you run matches what we built:
 
 #### Prerequisites
@@ -139,38 +139,6 @@ gh attestation verify oci://ghcr.io/aktin/notaufnahme-dwh-<service>@<digest> \
 
 # Example content of sbom.cdx.json (shortened):
 # {"bomFormat":"CycloneDX","components":[...],...}
-```
-
-#### 4. Verify Image Signature
-Each image is also signed with [Cosign](https://docs.sigstore.dev/cosign/signing/overview/). Check the cosign installation. If needed, install it following [this instruction](https://docs.sigstore.dev/cosign/system_config/installation/).
-```bash
-cosign version
-
-# Example output:
-# GitVersion:    v2.5.3
-```
-
-Check that the image was signed by the shared AKTIN workflow during a build of this repository. If valid, you’ll see output confirming the signature. For more information, refer to the [OIDC Cheat Sheet](https://docs.sigstore.dev/quickstart/verification-cheat-sheet/) and the [official Documentation](https://docs.sigstore.dev/cosign/verifying/verify/). Alternatively, you can verify the digest online using the [Rekor Web UI](https://search.sigstore.dev/).
-```bash
-cosign verify \
---certificate-identity-regexp "^https://github\.com/aktin/aktin-github-scripts/\.github/workflows/.*" \
---certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
---certificate-github-workflow-repository "aktin/docker-aktin-dwh" \
-ghcr.io/aktin/notaufnahme-dwh-<service>@<digest>
-
-# Example command:
-# cosign verify \
-# --certificate-identity-regexp "^https://github\.com/aktin/aktin-github-scripts/\.github/workflows/.*" \
-# --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-# --certificate-github-workflow-repository "aktin/docker-aktin-dwh" \
-# ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d
-
-# Example output:
-# Verification for ghcr.io/aktin/notaufnahme-dwh-database@sha256:3568fccb80c6f3512eb865d072ed76df7ebe35a2f6784eaad737e8b6e6e3363d --
-# The following checks were performed on each of these signatures:
-#   - The cosign claims were validated
-#   - Existence of the claims in the transparency log was verified offline
-#   - The code-signing certificate was verified using trusted certificate authority certificates
 ```
 
 ## For Developers

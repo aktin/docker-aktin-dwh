@@ -75,5 +75,6 @@ jobs:
         export PATH="$JAVA_HOME/bin:$PATH"
         ./src/build.sh --create-latest ${{ needs.gate.outputs.build_args }}
       images: ${{ needs.gate.outputs.images }}
+      delete-untagged: true
       cache-path: src/downloads/
       cache-key-files: src/resources/versions

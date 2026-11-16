@@ -32,6 +32,7 @@ jobs:
         "ghcr.io/aktin/notaufnahme-dwh-wildfly",
         "ghcr.io/aktin/notaufnahme-dwh-httpd"]
       upload-release-files: src/build/compose.yml
+      delete-untagged: true
       cache-path: src/downloads/
       cache-key-files: src/resources/versions
 

@@ -141,6 +141,8 @@ gh attestation verify oci://ghcr.io/aktin/notaufnahme-dwh-<service>@<digest> \
 # {"bomFormat":"CycloneDX","components":[...],...}
 ```
 
+The SBOM files attached to a GitHub Release describe the images built for that release. After a nightly rebuild the image behind the tag is a different one, its SBOM comes from the command above.
+
 ## For Developers
 If you want to build the containers yourself or contribute to development:
 

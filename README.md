@@ -150,7 +150,7 @@ git clone https://github.com/aktin/docker-aktin-dwh.git
 cd docker-aktin-dwh 
 ```
 
-2. Run the build script. It needs `curl`, `unzip`, `docker`, `java` and `mvn`:
+2. Run the build script. It needs `curl`, `unzip`, `docker`, `java` and `mvn`. It first stops and removes running containers and existing images of the services it builds:
 ```bash
 ./src/build.sh
 ```
@@ -186,7 +186,7 @@ echo "BROKER_API_KEY=<your-api-key>" > .env
 docker compose -f compose.dev.yml up -d
 ```
 
-`compose.dev.yml` starts WildFly in development mode (`DEV_MODE=true`). In development mode WildFly uses a customized configuration file with logging of CDA imports and rscript executions and needs `BROKER_API_KEY`. The database starts in development mode only when `.env` holds `DEV_MODE=true`. It then uses a separate test cluster with test patients and leaves the data volume untouched.
+`compose.dev.yml` starts WildFly in development mode (`DEV_MODE=true`). In development mode WildFly uses a customized configuration file with logging of CDA imports and rscript executions and needs `BROKER_API_KEY`. The database starts in development mode only when `.env` holds `DEV_MODE=true`. It then uses a separate test cluster with test patients and leaves the data volume untouched. The test cluster lives inside the container, not in a volume, and is lost when the container is recreated. In development mode WildFly connects to the AKTIN test broker, and `compose.dev.yml` mounts `debug/cda` and `debug/report-temp` from the build folder into WildFly.
 
 ## Commits and releases
 
@@ -198,7 +198,7 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org), enfo
 
 Allowed types are `feat fix docs style refactor perf test chore`. The subject starts lowercase, has no trailing period, and every line of the message stays at most 100 characters. Pull requests into `dev` are squash merged, so one conventional subject per PR lands on `dev`. `dev` is merged into `main` with a merge commit.
 
-A release is a tag `v*` on `main`. The tag starts the release workflow, which is described in [.github/workflows/README.md](.github/workflows/README.md#workflows). It publishes the three images and a GitHub Release with the release notes, the generated `compose.yml` and one SBOM file per image. The same `compose.yml` is committed to the branch `generated`, one commit per release, so its [history](https://github.com/aktin/docker-aktin-dwh/commits/generated/compose.yml) shows what changed between releases.
+A release is a tag `v*` on `main`. The tag starts the release workflow, which is described in [.github/workflows/README.md](.github/workflows/README.md#workflows). It publishes the three images and a GitHub Release with the release notes, the generated `compose.yml` and one SBOM file per image. The same `compose.yml` is committed to the branch `generated`, one commit per release that changes it, so its [history](https://github.com/aktin/docker-aktin-dwh/commits/generated/compose.yml) shows what changed between releases.
 
 The tags of the images do not come from the git tag. `src/build.sh` reads them from `src/resources/versions`: the value of `DWH_GITHUB_TAG`, then `-docker`, then the revision of the image, for example `1.7rc1-1-docker1`.
 

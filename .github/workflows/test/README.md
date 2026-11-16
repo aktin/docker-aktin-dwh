@@ -6,6 +6,7 @@
 
 - Docker installed and running
 - `act` 0.2.81 or newer ([install guide](https://nektosact.com/installation/index.html))
+- Network access to Docker Hub, GHCR and GitHub. The runs pull images and the shared workflows
 
 ## How to run
 

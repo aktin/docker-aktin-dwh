@@ -90,28 +90,30 @@ download_artifacts() {
   download_package() {
     local pkg_name="$1"
     local version="$2"
+    local repo_name="${3:-debian-${pkg_name}-pkg}"
     local zip_file="${DIR_DOWNLOADS}/${pkg_name}.zip"
     # Use cached version if available
     [[ -f "${zip_file}" ]] && { echo "Using cached ${pkg_name}.zip"; return 0; }
     # Download the latest version instead
     if [ "$USE_MAIN" = true ]; then
       echo "Downloading ${pkg_name} main branch..."
-      curl -L -o "${zip_file}" "${base_url}/debian-${pkg_name}-pkg/archive/refs/heads/main.zip"
+      curl -L -o "${zip_file}" "${base_url}/${repo_name}/archive/refs/heads/main.zip"
       return 0
     fi
     # Verify tag exists before attempting download
     local http_code
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" "${api_url}/debian-${pkg_name}-pkg/git/refs/tags/v${version}")
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" "${api_url}/${repo_name}/git/refs/tags/v${version}")
     if [[ "${http_code}" -ne 200 ]]; then
       echo "Error: ${pkg_name} version ${version} does not exist" >&2
       return 1
     fi
     # Download package from GitHub releases
     echo "Downloading ${pkg_name} package version ${version}..."
-    curl -L -o "${zip_file}" "${base_url}/debian-${pkg_name}-pkg/archive/refs/tags/v${version}.zip"
+    curl -L -o "${zip_file}" "${base_url}/${repo_name}/archive/refs/tags/v${version}.zip"
   }
   download_package "i2b2" "${I2B2_GITHUB_TAG}"
   download_package "dwh" "${DWH_GITHUB_TAG}"
+  download_package "meld" "${MELD_GITHUB_TAG}" "MELD"
 }
 
 extract_artifacts() {
@@ -120,25 +122,29 @@ extract_artifacts() {
   extract_src() {
      local pkg_name="$1"
      local version="$2"
+     local repo_name="${3:-debian-${pkg_name}-pkg}"
      local zip_file="${DIR_DOWNLOADS}/${pkg_name}.zip"
      local target_dir="${DIR_DOWNLOADS}/${pkg_name}"
      # Skip if package directory already exists
-     if [[ -d "${target_dir}" ]] && [[ -d "${target_dir}/debian" ]]; then
+     if [[ -d "${target_dir}" ]] \
+        && [[ -d "${target_dir}/resources" ]]; then
+        #&& [[ -d "${target_dir}/debian" ]]; then
        echo "Using cached ${pkg_name} sources"
        return 0
      fi
      # Determine package directory based on download type (main/version)
      local pkg_dir=$([ "$USE_MAIN" = true ] && echo "main" || echo "${version}")
-     local src_path="debian-${pkg_name}-pkg-${pkg_dir}/src"
+     local src_path="${repo_name}-${pkg_dir}/src"
      echo "Extracting ${pkg_name} source files..."
      mkdir -p "${target_dir}"
      unzip -qo "${zip_file}" "${src_path}/*" -d "${target_dir}"
      # Move files to target and cleanup temp dirs
      mv "${target_dir}/${src_path}/"* "${target_dir}"
-     rm -rf "${target_dir:?}/debian-${pkg_name}-pkg-${pkg_dir}"
+     rm -rf "${target_dir:?}/${repo_name}-${pkg_dir}"
    }
    extract_src "i2b2" "${I2B2_GITHUB_TAG}"
    extract_src "dwh" "${DWH_GITHUB_TAG}"
+   extract_src "meld" "${MELD_GITHUB_TAG}" "MELD"
 }
 
 execute_deb_build_scripts() {
@@ -299,6 +305,25 @@ prepare_wildfly_docker() {
       "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
 }
 
+prepare_meld_docker() {
+  echo "Preparing Wildfly container environment..."
+  local build_dir="${DIR_BUILD}/meld"
+  mkdir -p "${build_dir}"
+
+  deploy_meld_components() {
+    local base_dir="${DIR_DOWNLOADS}/meld"
+    cp -r "${base_dir}"/{*.py,requirements.txt,VERSION,InternalDataLoader,ModelEnvironment,ExecutionScheduler,ModelManager,ExecutionMonitor,utils,Logger,resources,Server} \
+      "${build_dir}/"
+    cp "${DIR_RESOURCES}/meld/entrypoint.sh" "${build_dir}/"
+  }
+
+  deploy_meld_components
+  sed -e "s|__PYTHON_VERSION__|${PYTHON_VERSION}|g" \
+      -e "s|__MELD_GITHUB_TAG__|${MELD_GITHUB_TAG}|g" \
+      -e "s|__MELD_CONTAINER_REVISION__|${MELD_CONTAINER_REVISION}|g" \
+      "${DIR_DOCKER}/meld/Dockerfile" > "${build_dir}/Dockerfile"
+}
+
 prepare_docker_compose() {
   local dev_compose="${DIR_BUILD}/compose.dev.yml"
   local prod_compose="${DIR_BUILD}/compose.yml"
@@ -310,6 +335,7 @@ prepare_docker_compose() {
         -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
         -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
         -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
+        -e "s|__MELD_CONTAINER_REVISION__|${MELD_CONTAINER_REVISION}|g" \
         "${template}" > "${dev_compose}"
   }
 
@@ -349,6 +375,7 @@ cleanup_old_docker_images() {
     "postgres:${POSTGRESQL_VERSION}"
     "ubuntu:${UBUNTU_VERSION}"
     "php:${APACHE_VERSION}"
+    "python:${PYTHON_VERSION}"
   )
   for base_image in "${base_images[@]}"; do
     if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^${base_image}$"; then
@@ -363,6 +390,7 @@ pull_base_images() {
   docker pull postgres:${POSTGRESQL_VERSION}
   docker pull ubuntu:${UBUNTU_VERSION}
   docker pull php:${APACHE_VERSION}
+  docker pull python:${PYTHON_VERSION}
 }
 
 build_docker_images() {
@@ -382,21 +410,21 @@ build_docker_images() {
   # Create latest tagged images if requested
   if [ "${CREATE_LATEST}" = true ]; then
     echo "Creating latest tagged images..."
-    local services=("database" "wildfly" "httpd")
-    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_REVISION}" "${HTTPD_CONTAINER_REVISION}")
+    local services=("database" "wildfly" "httpd" "meld")
+    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_REVISION}" "${HTTPD_CONTAINER_REVISION}" "${MELD_CONTAINER_REVISION}")
     for i in "${!services[@]}"; do
       local service="${services[$i]}"
       local version="${versions[$i]}"
       local versioned_tag="${IMAGE_NAMESPACE}-${service}:${DWH_GITHUB_TAG}-docker${version}"
       local latest_tag="${IMAGE_NAMESPACE}-${service}:latest"
-      docker tag "${versioned_tag}" "${latest_tag}"
+      docker tag "${versioned_tag}" "${latest_tag}"e
     done
   fi
 
   cd "${cwd}"
   if [[ "${CLEANUP}" == true ]]; then
     echo "Cleaning up build artifacts..."
-    rm -r "${DIR_BUILD}/"{database,wildfly,httpd}
+    rm -r "${DIR_BUILD}/"{database,wildfly,httpd,meld}
     [[ "${DIR_DOWNLOADS}" != "/" && -n "${DIR_DOWNLOADS}" ]] && rm -rf "${DIR_DOWNLOADS}"
   fi
 }
@@ -411,6 +439,7 @@ main() {
   prepare_apache2_docker "wildfly"
   prepare_wildfly_docker
   prepare_docker_compose
+  prepare_meld_docker
   cleanup_old_docker_images
   pull_base_images
   build_docker_images

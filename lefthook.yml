@@ -14,5 +14,4 @@ pre-commit:
     # The shared guard rejects data files outside its allowlist. This repo keeps
     # schema and synthetic fixture SQL under src/resources/database/.
     "block_data_files.py":
-      env:
-        DATA_FILE_ALLOWLIST: src/resources/database/
+      args: "--allow=src/resources/database/ {staged_files}"

@@ -1,0 +1,54 @@
+name: check-base-image
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: "The image to check (database, wildfly or httpd)"
+        required: true
+        type: string
+    outputs:
+      update:
+        description: "True if the published image was built on an older base digest"
+        value: ${{ jobs.check.outputs.update }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      update: ${{ steps.check.outputs.update }}
+    steps:
+      - name: Checkout Dockerfile and versions file
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            src/docker/${{ inputs.image }}/Dockerfile
+            src/resources/versions
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+      - name: Compare digests
+        id: check
+        env:
+          DOCKERFILE: src/docker/${{ inputs.image }}/Dockerfile
+          IMAGE: ghcr.io/aktin/notaufnahme-dwh-${{ inputs.image }}:latest
+        run: |
+          set -euo pipefail
+          # The FROM line names the base image, its version placeholder is resolved from the versions file
+          . src/resources/versions
+          base="$(awk '$1 == "FROM" { print $2; exit }' "$DOCKERFILE")"
+          while [[ "$base" =~ __([A-Z0-9_]+)__ ]]; do
+            key="${BASH_REMATCH[1]}"
+            base="${base/__${key}__/${!key}}"
+          done
+          current_digest="$(docker buildx imagetools inspect "docker.io/library/${base}" --format '{{.Manifest.Digest}}')"
+          built_digest="$(docker buildx imagetools inspect "$IMAGE" --format '{{index .Image.Config.Labels "org.opencontainers.image.base.digest"}}')"
+          echo "${base} is ${current_digest}, ${IMAGE} was built on ${built_digest:-<no label>}"
+          if [[ "$current_digest" != "$built_digest" ]]; then
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          fi

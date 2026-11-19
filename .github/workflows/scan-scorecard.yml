@@ -1,0 +1,17 @@
+name: scan-scorecard
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  push:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  analysis:
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+    uses: aktin/aktin-github-scripts/.github/workflows/scan-scorecard.yml@main

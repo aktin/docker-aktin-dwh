@@ -5,10 +5,17 @@
 #               - PostgreSQL database with i2b2/AKTIN schema
 #               - WildFly application server
 #               - Apache2 reverse proxy with i2b2 webclient
+# Requirements for updateagent:
+#               - Docker Engine (docker official, not Podman): the admin GUI detects Docker via /.dockerenv
+#               - The updateagent Debian package must be installed on the host
+#               - Linux hosts need extra_hosts "host.docker.internal:host-gateway" (set on the wildfly service)
+#               - updateDataPath (/var/lib/aktin/update) must be bind mounted into the wildfly container
+#               If any requirement is missing, the admin GUI silently reports the updateagent as not installed.
 # --------------------------------------
 
 services:
   database:
+    container_name: ${COMPOSE_PROJECT_NAME}-database
     image: __IMAGE_NAMESPACE__-database:${DATABASE_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__DATABASE_CONTAINER_REVISION__}
     security_opt:
       - no-new-privileges:true
@@ -20,17 +27,19 @@ services:
         BUILD_TIME: "${BUILD_TIME}"
     environment:
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      DEV_MODE: ${DEV_MODE:-false}
     secrets:
       - postgres_password
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres && psql -U postgres -d aktin -c \"SELECT 1 FROM information_schema.schemata WHERE schema_name = 'aktin'\"" ]
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres && psql -U postgres -d aktin -c \"SELECT 1 FROM information_schema.schemata WHERE schema_name = 'aktin'\"" ]
       interval: 30s
       timeout: 10s
       retries: 10
       start_period: 120s
   wildfly:
+    container_name: ${COMPOSE_PROJECT_NAME}-wildfly
     image: __IMAGE_NAMESPACE__-wildfly:${WILDFLY_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__WILDFLY_CONTAINER_REVISION__}
     security_opt:
       - no-new-privileges:true
@@ -39,20 +48,25 @@ services:
       context: ./wildfly
       args:
         BUILD_TIME: "${BUILD_TIME}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DB_HOST: ${DB_HOST:-database}
       DB_PORT: ${DB_PORT:-5432}
       DEV_MODE: ${DEV_MODE:-true}
+      BROKER_API_KEY: ${BROKER_API_KEY:-}
       LANG: ${LANG:-de_DE.UTF-8}
       LC_ALL: ${LC_ALL:-de_DE.UTF-8}
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       - aktin_config:/etc/aktin
       - aktin_data:/var/lib/aktin
-      - wildfly_deployments:/opt/wildfly/standalone/deployments
+      - ./debug/cda:/var/lib/aktin/cda-debug
+      - ./debug/report-temp:/var/tmp/report-temp
     depends_on:
       database:
         condition: service_healthy
+        restart: true
     healthcheck:
       test: [ "CMD-SHELL", "wget --server-response --spider http://127.0.0.1:9090/aktin/admin/rest/info/version 2>&1 | awk '/^  HTTP/{print $2}'" ]
       interval: 30s
@@ -60,6 +74,7 @@ services:
       retries: 10
       start_period: 120s
   httpd:
+    container_name: ${COMPOSE_PROJECT_NAME}-httpd
     image: __IMAGE_NAMESPACE__-httpd:${HTTPD_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__HTTPD_CONTAINER_REVISION__}
     security_opt:
       - no-new-privileges:true
@@ -84,7 +99,6 @@ volumes:
   pg_data:
   aktin_config:
   aktin_data:
-  wildfly_deployments:
 
 secrets:
   postgres_password:

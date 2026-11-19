@@ -16,21 +16,17 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.revision="__DATABASE_CONTAINER_REVISION__" \
     org.opencontainers.image.vendor="AKTIN" \
     org.opencontainers.image.title="AKTIN PostgreSQL" \
-    org.opencontainers.image.description="PostgreSQL database with i2b2/AKTIN schema"
+    org.opencontainers.image.description="PostgreSQL database with i2b2/AKTIN schema" \
+    org.opencontainers.image.base.digest="__BASE_DIGEST__"
 
-WORKDIR /sql.d
-COPY ./sql/* ./
+COPY ./sql/init.sql /docker-entrypoint-initdb.d/init.sql
+COPY ./sql/update[0-9]*.sql /updates/
+COPY ./entrypoint.sh /entrypoint.sh
+COPY ./sql/i2b2_test_fixture.sql /usr/local/share/aktin/i2b2_test_fixture.sql
+# zz- prefix: initdb.d scripts run in alphabetical order, the fixture needs the i2b2 schema from init.sql first.
+# Must stay executable: docker-entrypoint.sh sources non-executable .sh files, so the exit 0 in the guard would kill the whole init.
+COPY ./init-test-database.sh /docker-entrypoint-initdb.d/zz-init-test-database.sh
+RUN chmod +x /entrypoint.sh /docker-entrypoint-initdb.d/zz-init-test-database.sh
 
-# Combine SQL scripts into single initialization file
-RUN cat \
-    i2b2_init.sql \
-    i2b2_db.sql \
-    update_wildfly_host.sql \
-    addon_i2b2crcdata.concept_dimension.sql \
-    addon_i2b2metadata.sql \
-    update01_convert_zipcodes_to_str.sql \
-    update02_add_missing_p21_dates.sql \
-    aktin_init.sql \
-    > /docker-entrypoint-initdb.d/init.sql \
-    && rm -rf /sql.d/*
-
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["postgres"]

@@ -16,18 +16,21 @@ for cmd in curl unzip docker java mvn; do
 done
 
 readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
+readonly ALL_SERVICES=("database" "wildfly" "httpd")
 
 CLEANUP=false
 FORCE_REBUILD=false
 USE_MAIN=false
 CREATE_LATEST=false
+SERVICES=()
 
 usage() {
-  echo "Usage: $0 [--cleanup] [--force-rebuild] [--use-main-branch] [--create-latest]" >&2
+  echo "Usage: $0 [--cleanup] [--force-rebuild] [--use-main-branch] [--create-latest] [--service <name>]..." >&2
   echo "  --cleanup          Optional: Remove build files and downloads after image creation" >&2
   echo "  --force-rebuild    Optional: Force a complete image recreation" >&2
   echo "  --use-main-branch  Optional: Download the current main branch from the git repositories instead of the specific release versions" >&2
   echo "  --create-latest    Optional: Create additional containers tagged as 'latest'" >&2
+  echo "  --service <name>   Optional: Build only this image (${ALL_SERVICES[*]}), repeatable. Default builds all" >&2
   exit 1
 }
 
@@ -49,6 +52,14 @@ while [[ $# -gt 0 ]]; do
       CREATE_LATEST=true
       shift
       ;;
+    --service)
+      if [[ $# -lt 2 || ! " ${ALL_SERVICES[*]} " == *" $2 "* ]]; then
+        echo "Error: --service expects one of: ${ALL_SERVICES[*]}" >&2
+        usage
+      fi
+      SERVICES+=("$2")
+      shift 2
+      ;;
     -h|--help)
       usage
       ;;
@@ -59,14 +70,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [ -z "${DEV_API_KEY:-}" ]; then
-  echo "Error: DEV_API_KEY environment variable required for development properties in the WildFly container" >&2
-  echo "Set DEV_API_KEY before running: DEV_API_KEY=your-dev-key $0 [options]" >&2
-  exit 1
+if [[ ${#SERVICES[@]} -eq 0 ]]; then
+  SERVICES=("${ALL_SERVICES[@]}")
 fi
 
 # Define relevant directories as absolute paths
-readonly DIR_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DIR_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly DIR_SRC
 readonly DIR_DOCKER="${DIR_SRC}/docker"
 readonly DIR_BUILD="${DIR_SRC}/build"
 readonly DIR_RESOURCES="${DIR_SRC}/resources"
@@ -76,6 +86,22 @@ readonly DIR_DOWNLOADS="${DIR_SRC}/downloads"
 set -a
 . "${DIR_RESOURCES}/versions"
 set +a
+
+# Writes the digest of the base image named in the FROM line of a Dockerfile into its label, so the nightly check can compare it against the
+# current base image
+set_base_digest() {
+  local dockerfile="$1"
+  local base
+  base="$(awk '$1 == "FROM" { print $2; exit }' "${dockerfile}")"
+  local digest
+  digest="$(docker buildx imagetools inspect "docker.io/library/${base}" --format '{{.Manifest.Digest}}')"
+  sed -i "s|__BASE_DIGEST__|${digest}|g" "${dockerfile}"
+}
+
+# True if the given service was selected for this build
+is_selected() {
+  [[ " ${SERVICES[*]} " == *" $1 "* ]]
+}
 
 init_build_environment() {
   echo "Initializing build environment..."
@@ -134,7 +160,8 @@ extract_artifacts() {
        return 0
      fi
      # Determine package directory based on download type (main/version)
-     local pkg_dir=$([ "$USE_MAIN" = true ] && echo "main" || echo "${version}")
+     local pkg_dir
+     pkg_dir=$([ "$USE_MAIN" = true ] && echo "main" || echo "${version}")
      local src_path="debian-${pkg_name}-pkg-${pkg_dir}/src"
      echo "Extracting ${pkg_name} source files..."
      mkdir -p "${target_dir}"
@@ -172,24 +199,44 @@ execute_deb_build_scripts() {
 
 prepare_postgresql_docker(){
   echo "Preparing PostgreSQL container environment..."
-  local sql_target_dir="${DIR_BUILD}/database/sql"
+  local build_dir="${DIR_BUILD}/database"
+  local sql_target_dir="${build_dir}/sql"
   mkdir -p "${sql_target_dir}"
 
   copy_package_sql_scripts() {
     local pkg_name="$1"
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
     local pkg_path="${DIR_SRC}/downloads/${pkg_name}/build/aktin-notaufnahme-${pkg_name}_${version}"
     local sql_source_dir="${pkg_path}/usr/share/aktin-notaufnahme-${pkg_name}/sql"
     echo "Copying ${pkg_name} SQL scripts..."
     cp "${sql_source_dir}/"* "${sql_target_dir}"
   }
+
+  generate_init_sql() {
+    {
+      cat "${sql_target_dir}/i2b2_init.sql"
+      cat "${sql_target_dir}/i2b2_db.sql"
+      cat "${sql_target_dir}/update_wildfly_host.sql"
+      cat "${sql_target_dir}/addon_i2b2crcdata.concept_dimension.sql"
+      cat "${sql_target_dir}/addon_i2b2metadata.sql"
+      cat "${sql_target_dir}/aktin_init.sql"
+    } > "${sql_target_dir}/init.sql"
+  }
+
   copy_package_sql_scripts "i2b2"
   copy_package_sql_scripts "dwh"
+  cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
+  generate_init_sql
+  cp "${DIR_RESOURCES}/database/entrypoint.sh" "${build_dir}/entrypoint.sh"
+  cp "${DIR_RESOURCES}/database/i2b2_test_fixture.sql" "${sql_target_dir}/"
+  cp "${DIR_RESOURCES}/database/init-test-database.sh" "${build_dir}/init-test-database.sh"
+
   sed -e "s|__POSTGRESQL_VERSION__|${POSTGRESQL_VERSION}|g" \
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
-      "${DIR_DOCKER}/database/Dockerfile" > "${DIR_BUILD}/database/Dockerfile"
-  cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
+      "${DIR_DOCKER}/database/Dockerfile" > "${build_dir}/Dockerfile"
+  set_base_digest "${build_dir}/Dockerfile"
 }
 
 # TODO: Delete duplicates from proxy.php blacklist/whitelist?
@@ -200,7 +247,8 @@ prepare_apache2_docker() {
   mkdir -p "${build_dir}"
 
   deploy_i2b2_webclient() {
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
     local source_dir="${DIR_SRC}/downloads/i2b2/build/aktin-notaufnahme-i2b2_${version}/var/www/html/webclient"
     local target_dir="${build_dir}/webclient"
     echo "Copying i2b2 webclient..."
@@ -210,7 +258,8 @@ prepare_apache2_docker() {
     sed -i -e "s|localhost|${wildfly_host}|g" -e "s|127\.0\.0\.1|${wildfly_host}|g" "${target_dir}/proxy.php"
   }
   deploy_proxy_config() {
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
     local source_file="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}/etc/apache2/conf-available/aktin-j2ee-reverse-proxy.conf"
     echo "Deploying reverse proxy config..."
     cp "${source_file}" "${build_dir}/"
@@ -223,6 +272,7 @@ prepare_apache2_docker() {
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
       "${DIR_DOCKER}/httpd/Dockerfile" > "${build_dir}/Dockerfile"
+  set_base_digest "${build_dir}/Dockerfile"
 }
 
 prepare_wildfly_docker() {
@@ -231,22 +281,26 @@ prepare_wildfly_docker() {
   mkdir -p "${build_dir}"/{wildfly,import-scripts}
 
   deploy_wildfly_base() {
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
     local source_dir="${DIR_SRC}/downloads/i2b2/build/aktin-notaufnahme-i2b2_${version}/opt/wildfly"
     echo "Copying Wildfly server..."
     cp -r "${source_dir}/"* "${build_dir}/wildfly"
   }
   install_aktin_ds() {
     echo "Configuring Wildfly server..."
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
     local base_dir="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}"
-    local jdbc_version=$(grep "POSTGRES_JDBC_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
+    local jdbc_version
+    jdbc_version=$(grep "POSTGRES_JDBC_VERSION" "${DIR_SRC}/downloads/i2b2/resources/versions" | cut -d'=' -f2)
     sed -e "s|__POSTGRES_JDBC_VERSION__|${jdbc_version}|g" "${base_dir}/opt/wildfly/bin/add-aktin-config.cli" > "${build_dir}/wildfly/bin/add-aktin-config.cli"
     "${build_dir}/wildfly/bin/jboss-cli.sh" --file="${build_dir}/wildfly/bin/add-aktin-config.cli"
     rm "${build_dir}"/wildfly/standalone/configuration/standalone_xml_history/current/*
   }
   deploy_aktin_components() {
-    local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
+    local version
+    version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/dwh/resources/versions" | cut -d'=' -f2)
     local base_dir="${DIR_SRC}/downloads/dwh/build/aktin-notaufnahme-dwh_${version}"
     echo "Copying AKTIN components..."
     cp -r "${base_dir}/var/lib/aktin/import-scripts/"* "${build_dir}/import-scripts/"
@@ -255,7 +309,9 @@ prepare_wildfly_docker() {
     sed -e "s|^broker\.uris=.*|broker.uris=https://aktin-test-broker.klinikum.rwth-aachen.de/broker/|" \
         -e "s|^broker\.intervals=.*|broker.intervals=PT1M|" \
         -e "s|^local\.cn=.*|local.cn=DEV MODE DWH|" \
-        -e "s|^broker\.keys=.*|broker.keys=${DEV_API_KEY}|" \
+        -e "s|^import\.cda\.debug\.dir=.*|import.cda.debug.dir=/var/lib/aktin/cda-debug/|" \
+        -e "s|^import\.cda\.debug\.level=.*|import.cda.debug.level=all|" \
+        -e "s|^report\.debug\.keeptempfiles=.*|report.debug.keeptempfiles=true|" \
         "${base_dir}/etc/aktin/aktin.properties" > "${build_dir}/dev-aktin.properties"
     cp -r "${base_dir}/opt/wildfly/standalone/deployments/"* "${build_dir}/wildfly/standalone/deployments/"
     cp "${DIR_RESOURCES}/wildfly/entrypoint.sh" "${build_dir}/"
@@ -263,11 +319,13 @@ prepare_wildfly_docker() {
   # get all openjdk, python and R dependencies of debian package
   get_package_dependencies() {
    local pkg_name="$1"
-   local version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
+   local version
+   version=$(grep "PACKAGE_VERSION" "${DIR_SRC}/downloads/${pkg_name}/resources/versions" | cut -d'=' -f2)
    local control_path="${DIR_SRC}/downloads/${pkg_name}/build/aktin-notaufnahme-${pkg_name}_${version}/DEBIAN/control"
    grep '^Depends:' "${control_path}"
   }
-  local ubuntu_dependencies=$(
+  local ubuntu_dependencies
+  ubuntu_dependencies=$(
    { get_package_dependencies "i2b2"; get_package_dependencies "dwh"; } | \
    tr ',' '\n' | \
    grep -E 'openjdk|python3|r-' | \
@@ -283,6 +341,7 @@ prepare_wildfly_docker() {
       -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
       -e "s|__UBUNTU_DEPENDENCIES__|${ubuntu_dependencies}|g" \
       "${DIR_DOCKER}/wildfly/Dockerfile" > "${build_dir}/Dockerfile"
+  set_base_digest "${build_dir}/Dockerfile"
 }
 
 prepare_docker_compose() {
@@ -303,8 +362,9 @@ prepare_docker_compose() {
     cp "${dev_compose}" "${prod_compose}"
     sed -i '/build:/d; /context:/d; /args:/d; /BUILD_TIME:/d' "${prod_compose}"
     sed -i 's/DEV_MODE: \${DEV_MODE:-true}/DEV_MODE: ${DEV_MODE:-false}/' "${prod_compose}"
-    sed -i '/- wildfly_deployments:\/opt\/wildfly\/standalone\/deployments/d' "${prod_compose}"
-    sed -i '/wildfly_deployments:/d' "${prod_compose}"
+    sed -i '/- \.\/debug\/cda:/d' "${prod_compose}"
+    sed -i '/- \.\/debug\/report-temp:/d' "${prod_compose}"
+    sed -i '/BROKER_API_KEY:/d' "${prod_compose}"
   }
 
   create_dev_compose
@@ -313,7 +373,9 @@ prepare_docker_compose() {
 
 cleanup_old_docker_images() {
   echo "Cleaning up Docker resources..."
-  local images=$(docker images "${IMAGE_NAMESPACE}-*" --format "{{.Repository}}:{{.Tag}}")
+  local service
+  local images
+  images=$(for service in "${SERVICES[@]}"; do docker images "${IMAGE_NAMESPACE}-${service}" --format "{{.Repository}}:{{.Tag}}"; done)
   if [ -n "$images" ]; then
     # Remove any containers using these images
     for image in $images; do
@@ -329,30 +391,13 @@ cleanup_old_docker_images() {
   else
     echo "No project images found to cleanup"
   fi
-
-  local base_images=(
-    "postgres:${POSTGRESQL_VERSION}"
-    "ubuntu:${UBUNTU_VERSION}"
-    "php:${APACHE_VERSION}"
-  )
-  for base_image in "${base_images[@]}"; do
-    if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^${base_image}$"; then
-      echo "Removing base image ${base_image}..."
-      docker rmi "${base_image}"
-    fi
-  done
-}
-
-pull_base_images() {
-  echo "Pulling base images..."
-  docker pull postgres:${POSTGRESQL_VERSION}
-  docker pull ubuntu:${UBUNTU_VERSION}
-  docker pull php:${APACHE_VERSION}
 }
 
 build_docker_images() {
   echo "Building Docker images..."
-  local cwd="$(pwd)"
+  local service
+  local cwd
+  cwd="$(pwd)"
   cd "${DIR_BUILD}"
 
   # Build versioned images
@@ -362,17 +407,14 @@ build_docker_images() {
   else
     BUILD_ARGS=""
   fi
-  BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") docker compose -f compose.dev.yml build ${BUILD_ARGS}
+  BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") docker compose -f compose.dev.yml build --pull ${BUILD_ARGS} "${SERVICES[@]}"
 
   # Create latest tagged images if requested
   if [ "${CREATE_LATEST}" = true ]; then
     echo "Creating latest tagged images..."
-    local services=("database" "wildfly" "httpd")
-    local versions=("${DATABASE_CONTAINER_REVISION}" "${WILDFLY_CONTAINER_REVISION}" "${HTTPD_CONTAINER_REVISION}")
-    for i in "${!services[@]}"; do
-      local service="${services[$i]}"
-      local version="${versions[$i]}"
-      local versioned_tag="${IMAGE_NAMESPACE}-${service}:${DWH_GITHUB_TAG}-docker${version}"
+    for service in "${SERVICES[@]}"; do
+      local versioned_tag
+      versioned_tag="$(docker compose -f compose.dev.yml config --images | grep "^${IMAGE_NAMESPACE}-${service}:")"
       local latest_tag="${IMAGE_NAMESPACE}-${service}:latest"
       docker tag "${versioned_tag}" "${latest_tag}"
     done
@@ -381,7 +423,9 @@ build_docker_images() {
   cd "${cwd}"
   if [[ "${CLEANUP}" == true ]]; then
     echo "Cleaning up build artifacts..."
-    rm -r "${DIR_BUILD}/"{database,wildfly,httpd}
+    for service in "${SERVICES[@]}"; do
+      rm -r "${DIR_BUILD:?}/${service}"
+    done
     [[ "${DIR_DOWNLOADS}" != "/" && -n "${DIR_DOWNLOADS}" ]] && rm -rf "${DIR_DOWNLOADS}"
   fi
 }
@@ -392,12 +436,11 @@ main() {
   download_artifacts
   extract_artifacts
   execute_deb_build_scripts
-  prepare_postgresql_docker
-  prepare_apache2_docker "wildfly"
-  prepare_wildfly_docker
+  if is_selected "database"; then prepare_postgresql_docker; fi
+  if is_selected "httpd"; then prepare_apache2_docker "wildfly"; fi
+  if is_selected "wildfly"; then prepare_wildfly_docker; fi
   prepare_docker_compose
   cleanup_old_docker_images
-  pull_base_images
   build_docker_images
 }
 

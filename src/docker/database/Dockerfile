@@ -16,7 +16,8 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.revision="__DATABASE_CONTAINER_REVISION__" \
     org.opencontainers.image.vendor="AKTIN" \
     org.opencontainers.image.title="AKTIN PostgreSQL" \
-    org.opencontainers.image.description="PostgreSQL database with i2b2/AKTIN schema"
+    org.opencontainers.image.description="PostgreSQL database with i2b2/AKTIN schema" \
+    org.opencontainers.image.base.digest="__BASE_DIGEST__"
 
 COPY ./sql/init.sql /docker-entrypoint-initdb.d/init.sql
 COPY ./sql/update[0-9]*.sql /updates/

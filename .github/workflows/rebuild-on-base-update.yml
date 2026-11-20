@@ -1,0 +1,80 @@
+name: rebuild-on-base-update
+
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-database:
+    uses: ./.github/workflows/check-base-image.yml
+    with:
+      image: database
+
+  check-wildfly:
+    uses: ./.github/workflows/check-base-image.yml
+    with:
+      image: wildfly
+
+  check-httpd:
+    uses: ./.github/workflows/check-base-image.yml
+    with:
+      image: httpd
+
+  gate:
+    needs: [ check-database, check-wildfly, check-httpd ]
+    runs-on: ubuntu-latest
+    outputs:
+      any_update: ${{ steps.eval.outputs.any_update }}
+      build_args: ${{ steps.eval.outputs.build_args }}
+      images: ${{ steps.eval.outputs.images }}
+    steps:
+      - name: Collect the images whose base container changed
+        id: eval
+        env:
+          DATABASE: ${{ needs.check-database.outputs.update }}
+          WILDFLY: ${{ needs.check-wildfly.outputs.update }}
+          HTTPD: ${{ needs.check-httpd.outputs.update }}
+        run: |
+          set -euo pipefail
+          build_args=""
+          images=()
+          for service in database wildfly httpd; do
+            update="${service^^}"
+            if [[ "${!update}" == "true" ]]; then
+              build_args+=" --service ${service}"
+              images+=("\"ghcr.io/aktin/notaufnahme-dwh-${service}\"")
+            fi
+          done
+          if [[ ${#images[@]} -gt 0 ]]; then
+            echo "any_update=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any_update=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "build_args=${build_args}" >> "$GITHUB_OUTPUT"
+          echo "images=[$(IFS=,; echo "${images[*]}")]" >> "$GITHUB_OUTPUT"
+
+  # Rebuilds the images whose base container changed with src/build.sh, pushes
+  # and attests them. Runs on main only, a manual start on another branch
+  # stops after the checks.
+  images:
+    needs: gate
+    if: ${{ needs.gate.outputs.any_update == 'true' && github.ref == 'refs/heads/main' }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: aktin/aktin-github-scripts/.github/workflows/build-publish-image.yml@main
+    with:
+      build-command: |
+        export JAVA_HOME="$JAVA_HOME_21_X64"
+        export PATH="$JAVA_HOME/bin:$PATH"
+        ./src/build.sh --create-latest ${{ needs.gate.outputs.build_args }}
+      images: ${{ needs.gate.outputs.images }}
+      delete-untagged: true
+      cache-path: src/downloads/
+      cache-key-files: src/resources/versions

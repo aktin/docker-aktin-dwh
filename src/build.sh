@@ -16,7 +16,7 @@ for cmd in curl unzip docker java mvn; do
 done
 
 readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
-readonly ALL_SERVICES=("database" "wildfly" "httpd")
+readonly ALL_SERVICES=("database" "wildfly" "httpd" "meld")
 
 CLEANUP=false
 FORCE_REBUILD=false
@@ -486,6 +486,7 @@ main() {
   if is_selected "database"; then prepare_postgresql_docker; fi
   if is_selected "httpd"; then prepare_apache2_docker "wildfly"; fi
   if is_selected "wildfly"; then prepare_wildfly_docker; fi
+  if is_selected "meld"; then prepare_meld_docker; fi
   prepare_docker_compose
   prepare_meld_docker
   cleanup_old_docker_images

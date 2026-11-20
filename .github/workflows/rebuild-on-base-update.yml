@@ -24,8 +24,13 @@ jobs:
     with:
       image: httpd
 
+  check-meld:
+    uses: ./.github/workflows/check-base-image.yml
+    with:
+      image: meld
+
   gate:
-    needs: [ check-database, check-wildfly, check-httpd ]
+    needs: [ check-database, check-wildfly, check-httpd, check-meld ]
     runs-on: ubuntu-latest
     outputs:
       any_update: ${{ steps.eval.outputs.any_update }}
@@ -38,11 +43,12 @@ jobs:
           DATABASE: ${{ needs.check-database.outputs.update }}
           WILDFLY: ${{ needs.check-wildfly.outputs.update }}
           HTTPD: ${{ needs.check-httpd.outputs.update }}
+          MELD: ${{ needs.check-meld.outputs.update }}
         run: |
           set -euo pipefail
           build_args=""
           images=()
-          for service in database wildfly httpd; do
+          for service in database wildfly httpd meld; do
             update="${service^^}"
             if [[ "${!update}" == "true" ]]; then
               build_args+=" --service ${service}"

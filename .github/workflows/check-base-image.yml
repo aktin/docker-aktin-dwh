@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       image:
-        description: "The image to check (database, wildfly or httpd)"
+        description: "The image to check (database, wildfly, httpd, or meld)"
         required: true
         type: string
     outputs:

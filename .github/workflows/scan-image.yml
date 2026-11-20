@@ -18,4 +18,5 @@ jobs:
       images: >-
         ["ghcr.io/aktin/notaufnahme-dwh-database:latest",
         "ghcr.io/aktin/notaufnahme-dwh-wildfly:latest",
-        "ghcr.io/aktin/notaufnahme-dwh-httpd:latest"]
+        "ghcr.io/aktin/notaufnahme-dwh-httpd:latest",
+        "ghcr.io/aktin/notaufnahme-dwh-meld:latest"]

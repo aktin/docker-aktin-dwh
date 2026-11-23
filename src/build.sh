@@ -158,9 +158,7 @@ extract_artifacts() {
      local zip_file="${DIR_DOWNLOADS}/${pkg_name}.zip"
      local target_dir="${DIR_DOWNLOADS}/${pkg_name}"
      # Skip if package directory already exists
-     if [[ -d "${target_dir}" ]] \
-        && [[ -d "${target_dir}/resources" ]]; then
-        #&& [[ -d "${target_dir}/debian" ]]; then
+     if [[ -d "${target_dir}/resources" ]]; then
        echo "Using cached ${pkg_name} sources"
        return 0
      fi

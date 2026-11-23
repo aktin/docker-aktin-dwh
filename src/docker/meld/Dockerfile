@@ -1,13 +1,16 @@
 FROM python:__PYTHON_VERSION__
 
 ARG BUILD_TIME
-LABEL org.opencontainers.image.created="${BUILD_TIME}"
-LABEL org.opencontainers.image.version="__MELD_GITHUB_TAG__"
-LABEL org.opencontainers.image.revision="__MELD_CONTAINER_REVISION__"
-LABEL org.opencontainers.image.title="MELD Orchestrator"
-LABEL org.opencontainers.image.description="The MELD (Medical Learning and Deployment) Orchestrator enables clinicians and researchers\
-to run their own trained ML models."
-LABEL org.opencontainers.image.source="https://github.com/aktin/MELD"
+LABEL org.opencontainers.image.created=${BUILD_TIME} \
+    org.opencontainers.image.authors="akombeiz@ukaachen.de, shuening@ukaachen.de, skurka@ukaachen.de" \
+    org.opencontainers.image.source="https://github.com/aktin/docker-aktin-dwh" \
+    org.opencontainers.image.version="__DWH_GITHUB_TAG__" \
+    org.opencontainers.image.revision="__MELD_CONTAINER_REVISION__" \
+    org.opencontainers.image.vendor="AKTIN" \
+    org.opencontainers.image.title="MELD Orchestrator" \
+    org.opencontainers.image.description="The MELD (Medical Learning and Deployment) Orchestrator enables clinicians and researchers\
+to run their own trained ML models." \
+    org.opencontainers.image.base.digest="__BASE_DIGEST__"
 
 WORKDIR /
 

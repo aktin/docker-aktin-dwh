@@ -38,4 +38,4 @@ RUN apt-get update \
 
 USER root
 ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
-CMD ["sh", "-c", "exec gunicorn --bind \"${MELD_API_HOST}:${MELD_API_PORT}\" --workers 1 --threads 4 --access-logfile - --error-logfile - 'app:create_app()'"]
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 4 --access-logfile - --error-logfile - 'app:create_app()'"]

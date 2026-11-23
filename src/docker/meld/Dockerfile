@@ -16,19 +16,7 @@ RUN mkdir -p /logs /contracts /schedules
 
 WORKDIR /app
 
-COPY *.py ./
-COPY VERSION ./
-COPY entrypoint.sh ./
-COPY requirements.txt ./requirements.txt
-COPY InternalDataLoader ./InternalDataLoader
-COPY ModelEnvironment ./ModelEnvironment
-COPY ExecutionScheduler ./ExecutionScheduler
-COPY ModelManager ./ModelManager
-COPY ExecutionMonitor ./ExecutionMonitor
-COPY utils ./utils
-COPY Logger ./Logger
-COPY resources ./resources
-COPY Server ./Server
+COPY . ./
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates tzdata gosu \

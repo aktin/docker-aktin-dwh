@@ -365,6 +365,7 @@ prepare_meld_docker() {
       -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__MELD_CONTAINER_REVISION__|${MELD_CONTAINER_REVISION}|g" \
       "${DIR_DOCKER}/meld/Dockerfile" > "${build_dir}/Dockerfile"
+  set_base_digest "${build_dir}/Dockerfile"
 }
 
 prepare_docker_compose() {

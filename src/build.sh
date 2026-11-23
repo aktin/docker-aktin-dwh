@@ -349,7 +349,7 @@ prepare_wildfly_docker() {
 }
 
 prepare_meld_docker() {
-  echo "Preparing Wildfly container environment..."
+  echo "Preparing MELD container environment..."
   local build_dir="${DIR_BUILD}/meld"
   mkdir -p "${build_dir}"
 

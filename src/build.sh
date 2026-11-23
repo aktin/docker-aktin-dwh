@@ -466,7 +466,6 @@ main() {
   if is_selected "wildfly"; then prepare_wildfly_docker; fi
   if is_selected "meld"; then prepare_meld_docker; fi
   prepare_docker_compose
-  prepare_meld_docker
   cleanup_old_docker_images
   build_docker_images
 }

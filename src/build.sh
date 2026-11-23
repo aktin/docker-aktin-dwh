@@ -362,7 +362,7 @@ prepare_meld_docker() {
 
   deploy_meld_components
   sed -e "s|__PYTHON_VERSION__|${PYTHON_VERSION}|g" \
-      -e "s|__MELD_GITHUB_TAG__|${MELD_GITHUB_TAG}|g" \
+      -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
       -e "s|__MELD_CONTAINER_REVISION__|${MELD_CONTAINER_REVISION}|g" \
       "${DIR_DOCKER}/meld/Dockerfile" > "${build_dir}/Dockerfile"
 }

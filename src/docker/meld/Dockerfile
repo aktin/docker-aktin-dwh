@@ -1,6 +1,6 @@
 FROM python:__PYTHON_VERSION__
 
-ARG IMAGE_VERSION
+ARG BUILD_TIME
 LABEL org.opencontainers.image.created="${BUILD_TIME}"
 LABEL org.opencontainers.image.version="__MELD_GITHUB_TAG__"
 LABEL org.opencontainers.image.revision="__MELD_CONTAINER_REVISION__"

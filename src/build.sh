@@ -416,27 +416,6 @@ cleanup_old_docker_images() {
   else
     echo "No project images found to cleanup"
   fi
-
-  local base_images=(
-    "postgres:${POSTGRESQL_VERSION}"
-    "ubuntu:${UBUNTU_VERSION}"
-    "php:${APACHE_VERSION}"
-    "python:${PYTHON_VERSION}"
-  )
-  for base_image in "${base_images[@]}"; do
-    if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^${base_image}$"; then
-      echo "Removing base image ${base_image}..."
-      docker rmi "${base_image}"
-    fi
-  done
-}
-
-pull_base_images() {
-  echo "Pulling base images..."
-  docker pull postgres:${POSTGRESQL_VERSION}
-  docker pull ubuntu:${UBUNTU_VERSION}
-  docker pull php:${APACHE_VERSION}
-  docker pull python:${PYTHON_VERSION}
 }
 
 build_docker_images() {
@@ -462,7 +441,7 @@ build_docker_images() {
       local versioned_tag
       versioned_tag="$(docker compose -f compose.dev.yml config --images | grep "^${IMAGE_NAMESPACE}-${service}:")"
       local latest_tag="${IMAGE_NAMESPACE}-${service}:latest"
-      docker tag "${versioned_tag}" "${latest_tag}"e
+      docker tag "${versioned_tag}" "${latest_tag}"
     done
   fi
 

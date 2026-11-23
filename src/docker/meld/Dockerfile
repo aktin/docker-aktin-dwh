@@ -12,9 +12,7 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
 to run their own trained ML models." \
     org.opencontainers.image.base.digest="__BASE_DIGEST__"
 
-WORKDIR /
-
-RUN mkdir -p /logs /contracts /schedules /app
+RUN mkdir -p /logs /contracts /schedules
 
 WORKDIR /app
 

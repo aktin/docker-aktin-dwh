@@ -18,6 +18,12 @@ WORKDIR /app
 
 COPY . ./
 
+RUN echo 'meld\n' > ./db_password
+
+ENV DB_USER=meld \
+    DB_NAME=i2b2 \
+    DB_PASSWORD_FILE=/app/db_password
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates tzdata gosu \
     && rm -rf /var/lib/apt/lists/* \

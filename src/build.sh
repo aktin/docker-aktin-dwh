@@ -231,6 +231,7 @@ prepare_postgresql_docker(){
   copy_package_sql_scripts "i2b2"
   copy_package_sql_scripts "dwh"
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
+  cp "${DIR_RESOURCES}/database/update03_meld_user.sql" "${sql_target_dir}"
   generate_init_sql
   cp "${DIR_RESOURCES}/database/entrypoint.sh" "${build_dir}/entrypoint.sh"
   cp "${DIR_RESOURCES}/database/i2b2_test_fixture.sql" "${sql_target_dir}/"

@@ -30,7 +30,8 @@ jobs:
       images: >-
         ["ghcr.io/aktin/notaufnahme-dwh-database",
         "ghcr.io/aktin/notaufnahme-dwh-wildfly",
-        "ghcr.io/aktin/notaufnahme-dwh-httpd"]
+        "ghcr.io/aktin/notaufnahme-dwh-httpd",
+        "ghcr.io/aktin/notaufnahme-dwh-meld"]
       upload-release-files: src/build/compose.yml
       delete-untagged: true
       cache-path: src/downloads/

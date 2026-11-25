@@ -5,6 +5,7 @@
 #               - PostgreSQL database with i2b2/AKTIN schema
 #               - WildFly application server
 #               - Apache2 reverse proxy with i2b2 webclient
+#               - MELD Machine Learning Engine
 # Requirements for updateagent:
 #               - Docker Engine (docker official, not Podman): the admin GUI detects Docker via /.dockerenv
 #               - The updateagent Debian package must be installed on the host
@@ -94,11 +95,40 @@ services:
       timeout: 10s
       retries: 10
       start_period: 120s
+  meld:
+    container_name: ${COMPOSE_PROJECT_NAME}-meld
+    image: __IMAGE_NAMESPACE__-meld:${MELD_CONTAINER_VERSION:-__DWH_GITHUB_TAG__-docker__MELD_CONTAINER_REVISION__}
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    build:
+      context: ./meld
+      args:
+        BUILD_TIME: "${BUILD_TIME}"
+    environment:
+      - DB_HOST=${DB_HOST:-database}
+      - DB_PORT=${DB_PORT:-5432}
+      - TZ=${TZ:-Europe/Berlin}
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "meld_contracts:/contracts"
+    ports:
+      - "${MELD_PORT:-127.0.0.1:5000}:5000" # will be removed once meld has a dedicated section in dwh admin ui, and only accept connections from localhost
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:5000/health\", timeout=3)'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
 volumes:
   pg_data:
   aktin_config:
   aktin_data:
+  meld_contracts:
 
 secrets:
   postgres_password:

@@ -16,7 +16,7 @@ for cmd in curl unzip docker java mvn; do
 done
 
 readonly IMAGE_NAMESPACE="ghcr.io/aktin/notaufnahme-dwh"
-readonly ALL_SERVICES=("database" "wildfly" "httpd")
+readonly ALL_SERVICES=("database" "wildfly" "httpd" "meld")
 
 CLEANUP=false
 FORCE_REBUILD=false
@@ -122,28 +122,30 @@ download_artifacts() {
   download_package() {
     local pkg_name="$1"
     local version="$2"
+    local repo_name="${3:-debian-${pkg_name}-pkg}"
     local zip_file="${DIR_DOWNLOADS}/${pkg_name}.zip"
     # Use cached version if available
     [[ -f "${zip_file}" ]] && { echo "Using cached ${pkg_name}.zip"; return 0; }
     # Download the latest version instead
     if [ "$USE_MAIN" = true ]; then
       echo "Downloading ${pkg_name} main branch..."
-      curl -L -o "${zip_file}" "${base_url}/debian-${pkg_name}-pkg/archive/refs/heads/main.zip"
+      curl -L -o "${zip_file}" "${base_url}/${repo_name}/archive/refs/heads/main.zip"
       return 0
     fi
     # Verify tag exists before attempting download
     local http_code
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" "${api_url}/debian-${pkg_name}-pkg/git/refs/tags/v${version}")
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" "${api_url}/${repo_name}/git/refs/tags/v${version}")
     if [[ "${http_code}" -ne 200 ]]; then
       echo "Error: ${pkg_name} version ${version} does not exist" >&2
       return 1
     fi
     # Download package from GitHub releases
     echo "Downloading ${pkg_name} package version ${version}..."
-    curl -L -o "${zip_file}" "${base_url}/debian-${pkg_name}-pkg/archive/refs/tags/v${version}.zip"
+    curl -L -o "${zip_file}" "${base_url}/${repo_name}/archive/refs/tags/v${version}.zip"
   }
   download_package "i2b2" "${I2B2_GITHUB_TAG}"
   download_package "dwh" "${DWH_GITHUB_TAG}"
+  download_package "meld" "${MELD_GITHUB_TAG}" "MELD"
 }
 
 extract_artifacts() {
@@ -152,26 +154,28 @@ extract_artifacts() {
   extract_src() {
      local pkg_name="$1"
      local version="$2"
+     local repo_name="${3:-debian-${pkg_name}-pkg}"
      local zip_file="${DIR_DOWNLOADS}/${pkg_name}.zip"
      local target_dir="${DIR_DOWNLOADS}/${pkg_name}"
      # Skip if package directory already exists
-     if [[ -d "${target_dir}" ]] && [[ -d "${target_dir}/debian" ]]; then
+     if [[ -d "${target_dir}/resources" ]]; then
        echo "Using cached ${pkg_name} sources"
        return 0
      fi
      # Determine package directory based on download type (main/version)
      local pkg_dir
      pkg_dir=$([ "$USE_MAIN" = true ] && echo "main" || echo "${version}")
-     local src_path="debian-${pkg_name}-pkg-${pkg_dir}/src"
+     local src_path="${repo_name}-${pkg_dir}/src"
      echo "Extracting ${pkg_name} source files..."
      mkdir -p "${target_dir}"
      unzip -qo "${zip_file}" "${src_path}/*" -d "${target_dir}"
      # Move files to target and cleanup temp dirs
      mv "${target_dir}/${src_path}/"* "${target_dir}"
-     rm -rf "${target_dir:?}/debian-${pkg_name}-pkg-${pkg_dir}"
+     rm -rf "${target_dir:?}/${repo_name}-${pkg_dir}"
    }
    extract_src "i2b2" "${I2B2_GITHUB_TAG}"
    extract_src "dwh" "${DWH_GITHUB_TAG}"
+   extract_src "meld" "${MELD_GITHUB_TAG}" "MELD"
 }
 
 execute_deb_build_scripts() {
@@ -213,6 +217,17 @@ prepare_postgresql_docker(){
     cp "${sql_source_dir}/"* "${sql_target_dir}"
   }
 
+  generate_i2b2_updates_sql() {
+    local script
+    {
+      for script in "${sql_target_dir}"/update[0-9]*.sql; do
+        [ -f "${script}" ] || continue
+        cat "${script}"
+        printf '\n\n'
+      done
+    } > "${sql_target_dir}/i2b2_updates.sql"
+  }
+
   generate_init_sql() {
     {
       cat "${sql_target_dir}/i2b2_init.sql"
@@ -220,6 +235,7 @@ prepare_postgresql_docker(){
       cat "${sql_target_dir}/update_wildfly_host.sql"
       cat "${sql_target_dir}/addon_i2b2crcdata.concept_dimension.sql"
       cat "${sql_target_dir}/addon_i2b2metadata.sql"
+      cat "${sql_target_dir}/i2b2_updates.sql"
       cat "${sql_target_dir}/aktin_init.sql"
     } > "${sql_target_dir}/init.sql"
   }
@@ -227,6 +243,8 @@ prepare_postgresql_docker(){
   copy_package_sql_scripts "i2b2"
   copy_package_sql_scripts "dwh"
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
+  cp "${DIR_RESOURCES}/database/update03_meld_user.sql" "${sql_target_dir}"
+  generate_i2b2_updates_sql
   generate_init_sql
   cp "${DIR_RESOURCES}/database/entrypoint.sh" "${build_dir}/entrypoint.sh"
   cp "${DIR_RESOURCES}/database/i2b2_test_fixture.sql" "${sql_target_dir}/"
@@ -344,6 +362,26 @@ prepare_wildfly_docker() {
   set_base_digest "${build_dir}/Dockerfile"
 }
 
+prepare_meld_docker() {
+  echo "Preparing MELD container environment..."
+  local build_dir="${DIR_BUILD}/meld"
+  mkdir -p "${build_dir}"
+
+  deploy_meld_components() {
+    local base_dir="${DIR_DOWNLOADS}/meld"
+    cp -r "${base_dir}"/{*.py,requirements.txt,VERSION,InternalDataLoader,ModelEnvironment,ExecutionScheduler,ModelManager,ExecutionMonitor,utils,Logger,resources,Server} \
+      "${build_dir}/"
+    cp "${DIR_RESOURCES}/meld/entrypoint.sh" "${build_dir}/"
+  }
+
+  deploy_meld_components
+  sed -e "s|__PYTHON_VERSION__|${PYTHON_VERSION}|g" \
+      -e "s|__DWH_GITHUB_TAG__|${DWH_GITHUB_TAG}|g" \
+      -e "s|__MELD_CONTAINER_REVISION__|${MELD_CONTAINER_REVISION}|g" \
+      "${DIR_DOCKER}/meld/Dockerfile" > "${build_dir}/Dockerfile"
+  set_base_digest "${build_dir}/Dockerfile"
+}
+
 prepare_docker_compose() {
   local dev_compose="${DIR_BUILD}/compose.dev.yml"
   local prod_compose="${DIR_BUILD}/compose.yml"
@@ -355,6 +393,7 @@ prepare_docker_compose() {
         -e "s|__DATABASE_CONTAINER_REVISION__|${DATABASE_CONTAINER_REVISION}|g" \
         -e "s|__WILDFLY_CONTAINER_REVISION__|${WILDFLY_CONTAINER_REVISION}|g" \
         -e "s|__HTTPD_CONTAINER_REVISION__|${HTTPD_CONTAINER_REVISION}|g" \
+        -e "s|__MELD_CONTAINER_REVISION__|${MELD_CONTAINER_REVISION}|g" \
         "${template}" > "${dev_compose}"
   }
 
@@ -439,6 +478,7 @@ main() {
   if is_selected "database"; then prepare_postgresql_docker; fi
   if is_selected "httpd"; then prepare_apache2_docker "wildfly"; fi
   if is_selected "wildfly"; then prepare_wildfly_docker; fi
+  if is_selected "meld"; then prepare_meld_docker; fi
   prepare_docker_compose
   cleanup_old_docker_images
   build_docker_images

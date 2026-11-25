@@ -9,11 +9,8 @@ fi
 PGDATA="${PGDATA:-/var/lib/postgresql/data}"
 
 if [ -f "$PGDATA/PG_VERSION" ]; then
-    for script in /updates/update[0-9]*.sql; do
-        [ -f "$script" ] || continue
-        echo "Running: $(basename "$script")"
-        gosu postgres postgres --single -j i2b2 < "$script"
-    done
+    echo "Running: updates.sql"
+    gosu postgres postgres --single -j i2b2 < /updates/i2b2_updates.sql
 fi
 
 exec docker-entrypoint.sh "$@"

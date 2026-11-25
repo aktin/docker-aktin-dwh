@@ -18,7 +18,7 @@ WORKDIR /app
 
 COPY . ./
 
-RUN echo 'meld\n' > ./db_password
+RUN printf "%s" meld > ./db_password
 
 ENV DB_USER=meld \
     DB_NAME=i2b2 \

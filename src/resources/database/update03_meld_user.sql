@@ -1,3 +1,5 @@
+-- Create the MELD user with read access to i2b2crcdata if it does not exist.
+
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'meld') THEN

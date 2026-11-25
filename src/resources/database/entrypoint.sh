@@ -8,9 +8,9 @@ fi
 
 PGDATA="${PGDATA:-/var/lib/postgresql/data}"
 
-if [ -f "$PGDATA/PG_VERSION" ] && [ -s /updates/updates.sql ]; then
+if [ -f "$PGDATA/PG_VERSION" ]; then
     echo "Running: updates.sql"
-    gosu postgres postgres --single -j i2b2 < /updates/updates.sql
+    gosu postgres postgres --single -j i2b2 < /updates/i2b2_updates.sql
 fi
 
 exec docker-entrypoint.sh "$@"

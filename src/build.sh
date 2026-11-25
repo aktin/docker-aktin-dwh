@@ -217,7 +217,7 @@ prepare_postgresql_docker(){
     cp "${sql_source_dir}/"* "${sql_target_dir}"
   }
 
-  generate_update_sql() {
+  generate_i2b2_updates_sql() {
     local script
     {
       for script in "${sql_target_dir}"/update[0-9]*.sql; do
@@ -225,7 +225,7 @@ prepare_postgresql_docker(){
         cat "${script}"
         printf '\n\n'
       done
-    } > "${sql_target_dir}/updates.sql"
+    } > "${sql_target_dir}/i2b2_updates.sql"
   }
 
   generate_init_sql() {
@@ -235,9 +235,8 @@ prepare_postgresql_docker(){
       cat "${sql_target_dir}/update_wildfly_host.sql"
       cat "${sql_target_dir}/addon_i2b2crcdata.concept_dimension.sql"
       cat "${sql_target_dir}/addon_i2b2metadata.sql"
+      cat "${sql_target_dir}/i2b2_updates.sql"
       cat "${sql_target_dir}/aktin_init.sql"
-      printf '\n\\connect i2b2\n'
-      cat "${sql_target_dir}/updates.sql"
     } > "${sql_target_dir}/init.sql"
   }
 
@@ -245,7 +244,7 @@ prepare_postgresql_docker(){
   copy_package_sql_scripts "dwh"
   cp "${DIR_RESOURCES}/database/update_wildfly_host.sql" "${sql_target_dir}"
   cp "${DIR_RESOURCES}/database/update03_meld_user.sql" "${sql_target_dir}"
-  generate_update_sql
+  generate_i2b2_updates_sql
   generate_init_sql
   cp "${DIR_RESOURCES}/database/entrypoint.sh" "${build_dir}/entrypoint.sh"
   cp "${DIR_RESOURCES}/database/i2b2_test_fixture.sql" "${sql_target_dir}/"

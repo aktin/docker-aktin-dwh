@@ -20,7 +20,7 @@ LABEL org.opencontainers.image.created=${BUILD_TIME} \
     org.opencontainers.image.base.digest="__BASE_DIGEST__"
 
 COPY ./sql/init.sql /docker-entrypoint-initdb.d/init.sql
-COPY ./sql/updates.sql /updates/updates.sql
+COPY ./sql/i2b2_updates.sql /updates/i2b2_updates.sql
 COPY ./entrypoint.sh /entrypoint.sh
 COPY ./sql/i2b2_test_fixture.sql /usr/local/share/aktin/i2b2_test_fixture.sql
 # zz- prefix: initdb.d scripts run in alphabetical order, the fixture needs the i2b2 schema from init.sql first.

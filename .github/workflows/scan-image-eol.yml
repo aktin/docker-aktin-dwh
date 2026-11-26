@@ -1,0 +1,22 @@
+name: scan-image-eol
+
+on:
+  schedule:
+    - cron: "0 5 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    permissions:
+      contents: read
+      issues: write
+    uses: aktin/aktin-github-scripts/.github/workflows/scan-image-eol.yml@main
+    with:
+      versions-file: src/resources/versions
+      products: >-
+        {"POSTGRESQL_VERSION": "postgresql",
+        "UBUNTU_VERSION": "ubuntu",
+        "APACHE_VERSION": "php"}

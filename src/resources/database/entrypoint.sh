@@ -12,7 +12,13 @@ if [ -f "$PGDATA/PG_VERSION" ]; then
     for script in /updates/update[0-9]*.sql; do
         [ -f "$script" ] || continue
         echo "Running: $(basename "$script")"
-        gosu postgres postgres --single -j i2b2 < "$script"
+        output="$(gosu postgres postgres --single -j i2b2 < "$script" 2>&1)"
+        echo "$output"
+        # postgres --single exits 0 even on SQL errors
+        if grep -q "ERROR:" <<< "$output"; then
+            echo "Update failed: $(basename "$script")" >&2
+            exit 1
+        fi
     done
 fi
 

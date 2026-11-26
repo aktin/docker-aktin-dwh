@@ -1,4 +1,4 @@
-name: scan-eol
+name: scan-image-eol
 
 on:
   schedule:
@@ -13,7 +13,7 @@ jobs:
     permissions:
       contents: read
       issues: write
-    uses: aktin/aktin-github-scripts/.github/workflows/scan-eol.yml@main
+    uses: aktin/aktin-github-scripts/.github/workflows/scan-image-eol.yml@main
     with:
       versions-file: src/resources/versions
       products: >-

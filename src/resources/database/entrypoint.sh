@@ -9,7 +9,7 @@ fi
 PGDATA="${PGDATA:-/var/lib/postgresql/data}"
 
 if [ -f "$PGDATA/PG_VERSION" ]; then
-    echo "Running: updates.sql"
+    echo "Running: i2b2_updates.sql"
     gosu postgres postgres --single -j i2b2 < /updates/i2b2_updates.sql
 fi
 

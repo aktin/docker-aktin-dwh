@@ -31,6 +31,5 @@ RUN apt-get update \
     && pip install --no-cache-dir -r ./requirements.txt gunicorn \
     && chown -R meld:meld /logs /contracts /schedules
 
-USER root
 ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "4", "--access-logfile", "-", "--error-logfile", "-", "app:create_app()"]

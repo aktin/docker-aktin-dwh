@@ -218,10 +218,8 @@ prepare_postgresql_docker(){
   }
 
   generate_i2b2_updates_sql() {
-    local script
     {
       for script in "${sql_target_dir}"/update[0-9]*.sql; do
-        [ -f "${script}" ] || continue
         cat "${script}"
         printf '\n\n'
       done
